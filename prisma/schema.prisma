@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProposalStatus {
+  Draft
+  Sent
+  Opened
+  Signed
+  Lost
+}
+
+model Proposal {
+  id                  String         @id @default(uuid()) @db.Uuid
+  status              ProposalStatus @default(Draft)
+  walkThroughDate     DateTime
+  companyName         String
+  companyAddress      String
+  clientName          String
+  clientEmail         String
+  frequencyOfService  String
+  scopeOfWork         String         @db.Text
+  pricePerVisit       Decimal        @db.Decimal(10, 2)
+  monthlyCostExclGst  Decimal        @db.Decimal(10, 2)
+  totalMonthlyInclGst Decimal        @db.Decimal(10, 2)
+  acquisitionMethod   String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  signature           Signature?
+  proposalView        ProposalView?
+  sectionViews        SectionView[]
+}
+
+model Signature {
+  id             String   @id @default(uuid()) @db.Uuid
+  proposalId     String   @unique @db.Uuid
+  proposal       Proposal @relation(fields: [proposalId], references: [id])
+  signatureImage String   @db.Text
+  typedName      String
+  signedAt       DateTime @default(now())
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+}
+
+model ProposalView {
+  id            String   @id @default(uuid()) @db.Uuid
+  proposalId    String   @unique @db.Uuid
+  proposal      Proposal @relation(fields: [proposalId], references: [id])
+  firstOpenAt   DateTime
+  lastSeenAt    DateTime
+  totalSeconds  Int      @default(0)
+  openCount     Int      @default(1)
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SectionView {
+  id            String   @id @default(uuid()) @db.Uuid
+  proposalId    String   @db.Uuid
+  proposal      Proposal @relation(fields: [proposalId], references: [id])
+  sectionName   String
+  firstViewedAt DateTime
+  createdAt     DateTime @default(now())
+
+  @@unique([proposalId, sectionName])
+}

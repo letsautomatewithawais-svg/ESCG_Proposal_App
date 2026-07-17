@@ -1,26 +1,44 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f4;
+  --foreground: #14231f;
+
+  color-scheme: light;
+}
+
+/*
+ * Warm editorial palette — ink/paper/sage/gold/hairline. This fully replaces
+ * the earlier indigo/gray Tailwind-default foundation: no bg-indigo-*,
+ * text-gray-*, border-gray-* anywhere. Defining these as @theme tokens makes
+ * Tailwind generate real utility classes (bg-sage, text-ink, border-hairline,
+ * etc.) that are the source of truth in JSX. lib/ui.ts holds the matching
+ * typography/surface/button/status class tokens built on top of these.
+ */
+@theme {
+  --color-ink: #14231f; /* primary text and headings */
+  --color-paper: #faf8f4; /* page background */
+  --color-sage: #3f6b54; /* single accent — primary button, focus states, Signed status */
+  --color-warmgray: #8a8578; /* secondary/muted text */
+  --color-gold: #c9a961; /* pricing total emphasis only */
+  --color-hairline: #e4dfd3; /* border color, replaces gray-200 everywhere */
+
+  /* 3px standard radius — sharp corners, not rounded-lg/xl. rounded-full is untouched for true pills. */
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 3px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-fraunces);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
