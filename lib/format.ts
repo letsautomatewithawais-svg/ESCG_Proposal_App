@@ -1,3 +1,7 @@
+export function referenceNumber(id: string): string {
+  return id.slice(0, 8).toUpperCase();
+}
+
 export function formatCurrencyAUD(value: number | string): string {
   return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(
     Number(value),
@@ -10,6 +14,12 @@ export function formatDateAU(date: Date): string {
 
 export function formatDateTimeAU(date: Date): string {
   return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(
+    date,
+  );
+}
+
+export function formatDateTimeAUWithSeconds(date: Date): string {
+  return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "medium" }).format(
     date,
   );
 }

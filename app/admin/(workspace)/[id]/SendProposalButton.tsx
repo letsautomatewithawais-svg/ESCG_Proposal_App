@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "../../components/Button";
+import { Button } from "@/app/components/Button";
 
 export default function SendProposalButton({ proposalId }: { proposalId: string }) {
   const router = useRouter();

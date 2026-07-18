@@ -37,8 +37,74 @@
   --font-mono: var(--font-jetbrains-mono);
 }
 
+@theme inline {
+  --font-display: var(--font-plus-jakarta-sans);
+  --font-body: var(--font-inter-body);
+  --font-ticket-mono: var(--font-ibm-plex-mono);
+}
+
+/*
+ * Restrained, professional identity built around ESCG's brand green — now
+ * fully applied across the admin section (the earlier "service ticket"
+ * concept's ticket-ink/paper/steel/stamp/caution tokens have been migrated
+ * off and removed; font-ticket-mono is kept, still used for currency and
+ * reference numbers regardless of visual identity).
+ */
+@theme {
+  --color-brand-green: #1f5c3f;
+  --color-brand-green-tint: #eaf2ec;
+  --color-content-charcoal: #1f2421;
+  /* Supersedes --color-warmgray — remove warmgray once the admin section finishes migrating off the old palette. */
+  --color-text-muted: #8a8e86;
+  /* Supersedes --color-paper — remove paper once the admin section finishes migrating off the old palette. */
+  --color-surface-off: #fafaf8;
+  --color-neutral-tint: #f0efe9;
+  /* Opened status pill only. No amber/warning token existed in the original
+     ink/paper/sage/warmgray/gold/hairline palette — gold is explicitly
+     reserved for pricing emphasis, not free to reuse here — so this is new,
+     kept muted to match the rest of this identity's restrained saturation. */
+  --color-amber: #8a5a0f;
+  --color-amber-tint: #fbf1e3;
+  /* Sent status/stat-icon only — matches the same muted-desaturated
+     saturation level as amber/brand-green rather than a saturated default
+     blue. */
+  --color-blue: #2f5f86;
+  --color-blue-tint: #eaf1f6;
+  /* Lost status/stat-icon only — same muted-desaturated treatment. */
+  --color-red: #9a3a34;
+  --color-red-tint: #faeceb;
+
+  /*
+   * Expanded neutral scale (research-backed: Vercel's own system gives every
+   * border/hover/disabled state its own step rather than reusing one gray
+   * for several jobs). Ordered light to dark, same warm undertone as the
+   * existing surface-off/neutral-tint/hairline/text-muted/content-charcoal:
+   * surface-off > surface-hover > neutral-tint > border-subtle > hairline >
+   * border-strong > text-disabled > text-muted > content-charcoal.
+   */
+  /* Hover backgrounds (nav links, rows) — was reusing neutral-tint, which is
+     also the icon-chip fill color; one gray was doing two unrelated jobs. */
+  --color-surface-hover: #f5f3ee;
+  /* Secondary/internal dividers inside a card (e.g. between stacked sections
+     in a detail card) — lighter than hairline, which stays reserved for
+     actual card/row boundaries so hierarchy is visible, not uniform. */
+  --color-border-subtle: #eae5d9;
+  /* Emphasized borders/dividers where hairline reads too quiet. */
+  --color-border-strong: #c7bfac;
+  /* Genuinely disabled text (e.g. a "coming soon" menu item) — was reusing
+     text-muted at 50% opacity, an opacity hack instead of a real token. */
+  --color-text-disabled: #ada691;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
 }

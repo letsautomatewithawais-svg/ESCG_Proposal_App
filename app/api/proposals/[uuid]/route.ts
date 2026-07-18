@@ -66,3 +66,45 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ uuid: string }> },
+) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  if (!isValidSessionToken(token)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const { uuid } = await params;
+  if (!UUID_PATTERN.test(uuid)) {
+    return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
+  }
+
+  try {
+    const existing = await prisma.proposal.findUnique({
+      where: { id: uuid },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
+    }
+
+    await prisma.$transaction([
+      prisma.sectionView.deleteMany({ where: { proposalId: uuid } }),
+      prisma.proposalView.deleteMany({ where: { proposalId: uuid } }),
+      prisma.signature.deleteMany({ where: { proposalId: uuid } }),
+      prisma.proposal.delete({ where: { id: uuid } }),
+    ]);
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (err) {
+    console.error("Failed to delete proposal:", err);
+    return NextResponse.json(
+      { error: "Something went wrong, please try again." },
+      { status: 500 },
+    );
+  }
+}

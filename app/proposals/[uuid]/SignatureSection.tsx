@@ -5,18 +5,23 @@ import SignaturePad from "signature_pad";
 import { Button } from "../../components/Button";
 import { text } from "@/lib/ui";
 
-type ExistingSignature = { typedName: string; signedAt: string } | null;
+type ExistingSignature = { typedName: string; signedAt: string; signatureImage: string } | null;
 
 type SignatureSectionProps = {
   proposalId: string;
   alreadySigned: boolean;
   existingSignature: ExistingSignature;
+  /** Static rendering for the Puppeteer PDF export — never mounts the live
+   * canvas widget (no point in an interactive signature pad in a downloaded
+   * PDF), and shows a plain "not yet signed" line instead when unsigned. */
+  printMode?: boolean;
 };
 
 export default function SignatureSection({
   proposalId,
   alreadySigned,
   existingSignature,
+  printMode = false,
 }: SignatureSectionProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const padRef = useRef<SignaturePad | null>(null);
@@ -27,7 +32,7 @@ export default function SignatureSection({
   const [signedInfo, setSignedInfo] = useState<ExistingSignature>(existingSignature);
 
   useEffect(() => {
-    if (signed) return;
+    if (signed || printMode) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -50,7 +55,7 @@ export default function SignatureSection({
       window.removeEventListener("resize", resizeCanvas);
       pad.off();
     };
-  }, [signed]);
+  }, [signed, printMode]);
 
   function handleClear() {
     padRef.current?.clear();
@@ -93,7 +98,7 @@ export default function SignatureSection({
         return;
       }
 
-      setSignedInfo({ typedName: typedName.trim(), signedAt });
+      setSignedInfo({ typedName: typedName.trim(), signedAt, signatureImage });
       setSigned(true);
     } catch {
       setError("Something went wrong, please try again.");
@@ -104,18 +109,37 @@ export default function SignatureSection({
 
   if (signed) {
     return (
-      <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-6 text-center sm:p-8">
-        <p className="text-sm font-medium text-emerald-800">
+      <div className="rounded-[3px] border border-sage/30 bg-sage/5 p-6 text-center sm:p-8">
+        <p className="text-sm font-medium text-sage">
           Thank you, your proposal has been signed.
         </p>
         {signedInfo && (
-          <p className="mt-1 text-xs text-emerald-700/80">
-            Signed by {signedInfo.typedName} on{" "}
-            {new Intl.DateTimeFormat("en-AU", { dateStyle: "long", timeStyle: "short" }).format(
-              new Date(signedInfo.signedAt),
+          <>
+            <p className="mt-1 text-xs text-sage/80">
+              Signed by {signedInfo.typedName} on{" "}
+              {new Intl.DateTimeFormat("en-AU", { dateStyle: "long", timeStyle: "short" }).format(
+                new Date(signedInfo.signedAt),
+              )}
+            </p>
+            {signedInfo.signatureImage && (
+              /* eslint-disable-next-line @next/next/no-img-element -- stored base64 data URL, not an optimizable static asset */
+              <img
+                src={signedInfo.signatureImage}
+                alt={`Signature of ${signedInfo.typedName}`}
+                className="mx-auto mt-4 h-24 max-w-full object-contain"
+              />
             )}
-          </p>
+          </>
         )}
+      </div>
+    );
+  }
+
+  if (printMode) {
+    return (
+      <div>
+        <h2 className={text.sectionLabel}>Accept &amp; Sign</h2>
+        <p className={`mt-3 ${text.muted}`}>Awaiting signature.</p>
       </div>
     );
   }
@@ -124,7 +148,7 @@ export default function SignatureSection({
     <div>
       <h2 className={text.sectionLabel}>Accept &amp; Sign</h2>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-gray-300 bg-white">
+      <div className="mt-4 overflow-hidden rounded-[3px] border border-hairline bg-white">
         <canvas ref={canvasRef} className="h-48 w-full touch-none sm:h-56" />
       </div>
       <Button type="button" variant="secondary" size="sm" onClick={handleClear} disabled={isSubmitting} className="mt-2">
@@ -141,7 +165,7 @@ export default function SignatureSection({
           value={typedName}
           onChange={(e) => setTypedName(e.target.value)}
           disabled={isSubmitting}
-          className="mt-1.5 block w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+          className="mt-1.5 block w-full rounded-[3px] border border-hairline bg-white px-3 py-2.5 text-sm text-ink focus:border-sage focus:outline-none focus:ring-1 focus:ring-sage disabled:opacity-50"
         />
       </div>
 

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 const HEARTBEAT_INTERVAL_SECONDS = 15;
+const SECTION_DWELL_MS = 1500;
 
 const TRACKED_SECTIONS = [
   { id: "section-introduction", name: "Introduction" },
@@ -83,15 +84,33 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
 
     window.addEventListener("pagehide", handlePageHide);
 
+    const dwellTimers = new Map<Element, ReturnType<typeof setTimeout>>();
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const sectionName = entry.target.getAttribute("data-section-name");
-          if (sectionName) {
-            sendTrackingEvent(proposalId, { event: "section", sectionName });
+          const el = entry.target;
+
+          if (!entry.isIntersecting) {
+            const pendingTimer = dwellTimers.get(el);
+            if (pendingTimer) {
+              clearTimeout(pendingTimer);
+              dwellTimers.delete(el);
+            }
+            continue;
           }
-          observer.unobserve(entry.target);
+
+          if (dwellTimers.has(el)) continue;
+
+          const timer = setTimeout(() => {
+            dwellTimers.delete(el);
+            const sectionName = el.getAttribute("data-section-name");
+            if (sectionName) {
+              sendTrackingEvent(proposalId, { event: "section", sectionName });
+            }
+            observer.unobserve(el);
+          }, SECTION_DWELL_MS);
+          dwellTimers.set(el, timer);
         }
       },
       { threshold: 0.5 },
@@ -108,6 +127,7 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       stopInterval();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
+      for (const timer of dwellTimers.values()) clearTimeout(timer);
       observer.disconnect();
     };
   }, [proposalId]);
