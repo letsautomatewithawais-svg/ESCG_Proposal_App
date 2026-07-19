@@ -28,11 +28,11 @@ function DesktopNavLink({
     <Link
       href={href}
       title={collapsed ? label : undefined}
-      className={`flex items-center gap-2.5 rounded-[8px] px-3 py-2 text-sm font-medium transition-colors ${
+      className={`flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
         collapsed ? "justify-center px-0" : ""
       } ${
         active
-          ? "bg-brand-green-tint text-brand-green"
+          ? "bg-brand-primary-tint font-semibold text-brand-primary"
           : "text-content-charcoal/70 hover:bg-surface-hover hover:text-content-charcoal"
       }`}
     >
@@ -58,8 +58,8 @@ function MobileNavLink({
   return (
     <Link
       href={href}
-      className={`rounded-[6px] px-2.5 py-1 text-sm font-medium transition-colors ${
-        active ? "bg-brand-green-tint text-brand-green" : "text-text-muted hover:text-content-charcoal"
+      className={`rounded-full px-2.5 py-1 text-sm font-medium transition-colors ${
+        active ? "bg-brand-primary-tint text-brand-primary" : "text-text-muted hover:text-content-charcoal"
       }`}
     >
       {label}
@@ -93,7 +93,7 @@ export default function Sidebar({ displayName }: { displayName: string }) {
         >
           {collapsed ? (
             <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-brand-green text-xs font-bold text-white"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-brand-primary text-xs font-bold text-white"
               aria-hidden="true"
             >
               E
@@ -101,7 +101,7 @@ export default function Sidebar({ displayName }: { displayName: string }) {
           ) : (
             <div className="flex items-center gap-2.5">
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand-green text-xs font-bold text-white"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand-primary text-xs font-bold text-white"
                 aria-hidden="true"
               >
                 E
@@ -155,7 +155,7 @@ export default function Sidebar({ displayName }: { displayName: string }) {
 
         <div className="border-t border-hairline px-3 py-4">
           <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : "px-1"}`}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-green-tint text-sm font-semibold text-brand-green">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-primary-tint text-sm font-semibold text-brand-primary">
               {avatarInitial}
             </div>
             {!collapsed && (

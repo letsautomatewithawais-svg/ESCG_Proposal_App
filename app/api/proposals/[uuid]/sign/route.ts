@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { v4 as uuidv4 } from "uuid";
+import { supabaseAdmin } from "@/lib/supabase";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_SIGNATURE_LENGTH = 100;
@@ -51,11 +52,13 @@ export async function POST(
     signedAtRaw && !Number.isNaN(Date.parse(signedAtRaw)) ? new Date(signedAtRaw) : new Date();
 
   try {
-    const proposal = await prisma.proposal.findUnique({
-      where: { id: uuid },
-      select: { id: true, status: true },
-    });
+    const { data: proposal, error: findError } = await supabaseAdmin
+      .from("Proposal")
+      .select("id, status")
+      .eq("id", uuid)
+      .maybeSingle();
 
+    if (findError) throw findError;
     if (!proposal) {
       return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
     }
@@ -69,21 +72,21 @@ export async function POST(
 
     const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
 
-    await prisma.$transaction([
-      prisma.signature.create({
-        data: {
-          proposalId: proposal.id,
-          signatureImage,
-          typedName,
-          signedAt,
-          ipAddress,
-        },
-      }),
-      prisma.proposal.update({
-        where: { id: proposal.id },
-        data: { status: "Signed" },
-      }),
-    ]);
+    const { error: signatureError } = await supabaseAdmin.from("Signature").insert({
+      id: uuidv4(),
+      proposalId: proposal.id,
+      signatureImage,
+      typedName,
+      signedAt: signedAt.toISOString(),
+      ipAddress,
+    });
+    if (signatureError) throw signatureError;
+
+    const { error: updateError } = await supabaseAdmin
+      .from("Proposal")
+      .update({ status: "Signed", updatedAt: new Date().toISOString() })
+      .eq("id", proposal.id);
+    if (updateError) throw updateError;
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {

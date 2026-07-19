@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n db,next -c blue,green \"prisma dev\" \"next dev\"",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -12,6 +12,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@sparticuz/chromium": "^149.0.0",
+    "@supabase/supabase-js": "^2.110.7",
     "@tabler/icons-react": "^3.45.0",
     "next": "16.2.10",
     "prisma": "^7.8.0",

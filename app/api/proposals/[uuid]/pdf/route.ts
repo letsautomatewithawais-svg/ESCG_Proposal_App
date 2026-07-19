@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // Puppeteer cold-start (serverless Chromium) + render + export can run a few
 // seconds past Next's default route timeout — give it headroom. Actual
@@ -21,11 +21,16 @@ export async function GET(
     return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
   }
 
-  const proposal = await prisma.proposal.findUnique({
-    where: { id: uuid },
-    select: { id: true, clientName: true },
-  });
+  const { data: proposal, error } = await supabaseAdmin
+    .from("Proposal")
+    .select("id, clientName")
+    .eq("id", uuid)
+    .maybeSingle();
 
+  if (error) {
+    console.error("PDF export: failed to look up proposal:", error);
+    return NextResponse.json({ error: "Failed to generate PDF." }, { status: 500 });
+  }
   if (!proposal) {
     return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
   }

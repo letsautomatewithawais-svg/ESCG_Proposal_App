@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isValidSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VALID_STATUSES = ["Draft", "Sent", "Opened", "Signed", "Lost"] as const;
@@ -13,6 +13,81 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isValidStatus(value: unknown): value is ProposalStatus {
   return typeof value === "string" && (VALID_STATUSES as readonly string[]).includes(value);
+}
+
+// Powers ProposalDetailPanel's client-side fetch — selecting a proposal in
+// the admin workspace updates a URL param and fetches this instead of
+// navigating to a new route, so the list panel never unmounts/reloads.
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ uuid: string }> },
+) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  if (!isValidSessionToken(token)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const { uuid } = await params;
+  if (!UUID_PATTERN.test(uuid)) {
+    return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
+  }
+
+  const { data: proposal, error: proposalError } = await supabaseAdmin
+    .from("Proposal")
+    .select("*")
+    .eq("id", uuid)
+    .maybeSingle();
+
+  if (proposalError) {
+    console.error("Failed to load proposal:", proposalError);
+    return NextResponse.json(
+      { error: "Something went wrong, please try again." },
+      { status: 500 },
+    );
+  }
+  if (!proposal) {
+    return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
+  }
+
+  const [
+    { data: signature, error: signatureError },
+    { data: proposalView, error: viewError },
+    { data: sectionViews, error: sectionsError },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("Signature")
+      .select("typedName, signedAt, signatureImage")
+      .eq("proposalId", uuid)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("ProposalView")
+      .select("firstOpenAt, totalSeconds, openCount")
+      .eq("proposalId", uuid)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("SectionView")
+      .select("sectionName, firstViewedAt, totalSeconds")
+      .eq("proposalId", uuid),
+  ]);
+
+  if (signatureError || viewError || sectionsError) {
+    console.error(
+      "Failed to load proposal detail:",
+      signatureError ?? viewError ?? sectionsError,
+    );
+    return NextResponse.json(
+      { error: "Something went wrong, please try again." },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    proposal,
+    signature: signature ?? null,
+    proposalView: proposalView ?? null,
+    sectionViews: sectionViews ?? [],
+  });
 }
 
 export async function PATCH(
@@ -43,19 +118,23 @@ export async function PATCH(
   }
 
   try {
-    const existing = await prisma.proposal.findUnique({
-      where: { id: uuid },
-      select: { id: true },
-    });
+    const { data: existing, error: findError } = await supabaseAdmin
+      .from("Proposal")
+      .select("id")
+      .eq("id", uuid)
+      .maybeSingle();
 
+    if (findError) throw findError;
     if (!existing) {
       return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
     }
 
-    await prisma.proposal.update({
-      where: { id: uuid },
-      data: { status },
-    });
+    const { error: updateError } = await supabaseAdmin
+      .from("Proposal")
+      .update({ status, updatedAt: new Date().toISOString() })
+      .eq("id", uuid);
+
+    if (updateError) throw updateError;
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
@@ -83,21 +162,41 @@ export async function DELETE(
   }
 
   try {
-    const existing = await prisma.proposal.findUnique({
-      where: { id: uuid },
-      select: { id: true },
-    });
+    const { data: existing, error: findError } = await supabaseAdmin
+      .from("Proposal")
+      .select("id")
+      .eq("id", uuid)
+      .maybeSingle();
 
+    if (findError) throw findError;
     if (!existing) {
       return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
     }
 
-    await prisma.$transaction([
-      prisma.sectionView.deleteMany({ where: { proposalId: uuid } }),
-      prisma.proposalView.deleteMany({ where: { proposalId: uuid } }),
-      prisma.signature.deleteMany({ where: { proposalId: uuid } }),
-      prisma.proposal.delete({ where: { id: uuid } }),
-    ]);
+    // Foreign keys are ON DELETE RESTRICT, not CASCADE — children must go first.
+    const { error: sectionViewError } = await supabaseAdmin
+      .from("SectionView")
+      .delete()
+      .eq("proposalId", uuid);
+    if (sectionViewError) throw sectionViewError;
+
+    const { error: proposalViewError } = await supabaseAdmin
+      .from("ProposalView")
+      .delete()
+      .eq("proposalId", uuid);
+    if (proposalViewError) throw proposalViewError;
+
+    const { error: signatureError } = await supabaseAdmin
+      .from("Signature")
+      .delete()
+      .eq("proposalId", uuid);
+    if (signatureError) throw signatureError;
+
+    const { error: proposalError } = await supabaseAdmin
+      .from("Proposal")
+      .delete()
+      .eq("id", uuid);
+    if (proposalError) throw proposalError;
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {

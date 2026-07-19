@@ -1,0 +1,114 @@
+// Hand-written to mirror database-updates.sql (no Supabase CLI/dashboard access
+// to run `supabase gen types`). Keep in sync whenever that file changes.
+
+export type ProposalStatus = "Draft" | "Sent" | "Opened" | "Signed" | "Lost";
+
+type ProposalRow = {
+  id: string;
+  status: ProposalStatus;
+  walkThroughDate: string;
+  companyName: string;
+  companyAddress: string;
+  clientName: string;
+  clientEmail: string;
+  frequencyOfService: string;
+  scopeOfWork: string;
+  pricePerVisit: number;
+  monthlyCostExclGst: number;
+  totalMonthlyInclGst: number;
+  acquisitionMethod: string;
+  createdAt: string;
+  updatedAt: string;
+};
+// id and updatedAt have no DB default — Prisma used to set both client-side,
+// so callers must keep supplying them explicitly.
+type ProposalInsert = Omit<ProposalRow, "status" | "createdAt"> & {
+  status?: ProposalStatus;
+  createdAt?: string;
+};
+type ProposalUpdate = Partial<ProposalRow>;
+
+type SignatureRow = {
+  id: string;
+  proposalId: string;
+  signatureImage: string;
+  typedName: string;
+  signedAt: string;
+  ipAddress: string | null;
+  createdAt: string;
+};
+type SignatureInsert = Omit<SignatureRow, "signedAt" | "createdAt"> & {
+  signedAt?: string;
+  createdAt?: string;
+};
+type SignatureUpdate = Partial<SignatureRow>;
+
+type ProposalViewRow = {
+  id: string;
+  proposalId: string;
+  firstOpenAt: string;
+  lastSeenAt: string;
+  totalSeconds: number;
+  openCount: number;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+type ProposalViewInsert = Omit<ProposalViewRow, "totalSeconds" | "openCount" | "createdAt"> & {
+  totalSeconds?: number;
+  openCount?: number;
+  createdAt?: string;
+};
+type ProposalViewUpdate = Partial<ProposalViewRow>;
+
+type SectionViewRow = {
+  id: string;
+  proposalId: string;
+  sectionName: string;
+  firstViewedAt: string;
+  totalSeconds: number;
+  createdAt: string;
+};
+type SectionViewInsert = Omit<SectionViewRow, "totalSeconds" | "createdAt"> & {
+  totalSeconds?: number;
+  createdAt?: string;
+};
+type SectionViewUpdate = Partial<SectionViewRow>;
+
+export type Database = {
+  public: {
+    Tables: {
+      Proposal: {
+        Row: ProposalRow;
+        Insert: ProposalInsert;
+        Update: ProposalUpdate;
+        Relationships: [];
+      };
+      Signature: {
+        Row: SignatureRow;
+        Insert: SignatureInsert;
+        Update: SignatureUpdate;
+        Relationships: [];
+      };
+      ProposalView: {
+        Row: ProposalViewRow;
+        Insert: ProposalViewInsert;
+        Update: ProposalViewUpdate;
+        Relationships: [];
+      };
+      SectionView: {
+        Row: SectionViewRow;
+        Insert: SectionViewInsert;
+        Update: SectionViewUpdate;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: {
+      ProposalStatus: ProposalStatus;
+    };
+    CompositeTypes: Record<string, never>;
+  };
+};

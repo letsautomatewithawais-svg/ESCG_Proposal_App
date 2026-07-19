@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isValidSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { sendProposalEmail } from "@/lib/email";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -22,17 +22,13 @@ export async function POST(
   }
 
   try {
-    const proposal = await prisma.proposal.findUnique({
-      where: { id: uuid },
-      select: {
-        id: true,
-        status: true,
-        clientName: true,
-        clientEmail: true,
-        companyName: true,
-      },
-    });
+    const { data: proposal, error: findError } = await supabaseAdmin
+      .from("Proposal")
+      .select("id, status, clientName, clientEmail, companyName")
+      .eq("id", uuid)
+      .maybeSingle();
 
+    if (findError) throw findError;
     if (!proposal) {
       return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
     }
@@ -52,10 +48,12 @@ export async function POST(
       companyName: proposal.companyName,
     });
 
-    await prisma.proposal.update({
-      where: { id: proposal.id },
-      data: { status: "Sent" },
-    });
+    const { error: updateError } = await supabaseAdmin
+      .from("Proposal")
+      .update({ status: "Sent", updatedAt: new Date().toISOString() })
+      .eq("id", proposal.id);
+
+    if (updateError) throw updateError;
 
     return NextResponse.json({ success: true, emailSent: result.success }, { status: 200 });
   } catch (err) {

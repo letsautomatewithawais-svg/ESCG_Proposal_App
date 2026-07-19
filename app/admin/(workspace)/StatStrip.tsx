@@ -53,12 +53,12 @@ function StatCard({
   iconClassName?: string;
 }) {
   return (
-    <div className={`${brand.card} flex flex-col p-4`}>
+    <div className={`${brand.card} flex flex-col p-3.5`}>
       <div className="flex items-start justify-between gap-2">
         <p className={`${brand.label} whitespace-nowrap`}>{label}</p>
         {Icon && (
-          <div className={`${brand.iconChip} h-8 w-8 ${chipClassName}`}>
-            <Icon size={15} stroke={1.9} className={iconClassName} />
+          <div className={`${brand.iconChip} h-6 w-6 ${chipClassName}`}>
+            <Icon size={12} stroke={2} className={iconClassName} />
           </div>
         )}
       </div>
@@ -67,10 +67,10 @@ function StatCard({
           "makes the whole dashboard read like a terminal" mistake. tabular-nums
           alone already gives the fixed-width digit alignment that mono was
           otherwise being used for. */}
-      <p className="mt-2 font-display text-[26px] font-bold leading-none tracking-tight tabular-nums text-content-charcoal">
+      <p className="mt-1.5 font-display text-xl font-bold leading-none tracking-tight tabular-nums text-content-charcoal">
         {stat.count}
       </p>
-      <div className="mt-1.5 h-4">
+      <div className="mt-1 h-3.5">
         <TrendLabel trendPercent={stat.trendPercent} trendRaw={stat.trendRaw} />
       </div>
     </div>
@@ -91,13 +91,11 @@ type StatStripProps = {
 // route itself.
 export default function StatStrip({ total, sent, opened, signed, lost, lastActivityAt }: StatStripProps) {
   return (
-    <div className="border-b border-hairline bg-surface-off px-6 py-6 sm:px-8">
+    <div className="border-b border-hairline bg-surface-off px-6 py-4 sm:px-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl text-content-charcoal sm:text-[28px]">
-            Proposals
-          </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="font-display text-xl text-content-charcoal sm:text-2xl">Proposals</h1>
+          <p className="mt-0.5 text-xs text-text-muted">
             {total.count} {total.count === 1 ? "proposal" : "proposals"}
             {lastActivityAt &&
               ` · Last activity ${formatRelativeTime(new Date(lastActivityAt))}`}
@@ -105,14 +103,14 @@ export default function StatStrip({ total, sent, opened, signed, lost, lastActiv
         </div>
         <Link
           href="/admin/new"
-          className={`flex shrink-0 items-center gap-1.5 rounded-[8px] bg-brand-green px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-green/90 active:scale-[0.98] ${brand.focusRing}`}
+          className={`flex shrink-0 items-center gap-1.5 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-primary/90 active:scale-[0.98] ${brand.focusRing}`}
         >
           <IconPlus size={16} stroke={2.25} />
           New Proposal
         </Link>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatCard
           label="Total Proposals"
           stat={total}

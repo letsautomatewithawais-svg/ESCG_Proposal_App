@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Topbar from "./Topbar";
 import { brand } from "@/lib/ui";
 
@@ -10,7 +11,11 @@ import { brand } from "@/lib/ui";
 export default function AdminWorkspaceLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`flex min-h-full flex-col ${brand.panel}`}>
-      <Topbar />
+      {/* Topbar reads useSearchParams (client-side) to show a breadcrumb —
+          Next.js requires a Suspense boundary around that. */}
+      <Suspense fallback={<div className="h-[45px] border-b border-hairline" />}>
+        <Topbar />
+      </Suspense>
       {children}
     </div>
   );

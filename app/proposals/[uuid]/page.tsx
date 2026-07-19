@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { formatCurrencyAUD, formatDateAU } from "@/lib/format";
 import { surface, text } from "@/lib/ui";
 import { Brand } from "../../components/Brand";
 import SignatureSection from "./SignatureSection";
 import ProposalTracker from "./ProposalTracker";
+
+// Must always reflect live status/signature state — never statically prerendered.
+export const dynamic = "force-dynamic";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -27,19 +30,29 @@ export default async function ProposalPage({
     notFound();
   }
 
-  const proposal = await prisma.proposal.findUnique({
-    where: { id: uuid },
-    include: { signature: true },
-  });
+  const { data: proposal, error: proposalError } = await supabaseAdmin
+    .from("Proposal")
+    .select("*")
+    .eq("id", uuid)
+    .maybeSingle();
 
+  if (proposalError) throw proposalError;
   if (!proposal) {
     notFound();
   }
 
+  const { data: signature, error: signatureError } = await supabaseAdmin
+    .from("Signature")
+    .select("typedName, signedAt, signatureImage")
+    .eq("proposalId", uuid)
+    .maybeSingle();
+
+  if (signatureError) throw signatureError;
+
   const walkThroughDateDisplay = new Intl.DateTimeFormat("en-AU", {
     dateStyle: "full",
-  }).format(proposal.walkThroughDate);
-  const dateIssuedDisplay = formatDateAU(proposal.createdAt);
+  }).format(new Date(proposal.walkThroughDate));
+  const dateIssuedDisplay = formatDateAU(new Date(proposal.createdAt));
   const referenceNumber = proposal.id.slice(0, 8).toUpperCase();
 
   return (
@@ -140,13 +153,13 @@ export default async function ProposalPage({
           >
             <SignatureSection
               proposalId={proposal.id}
-              alreadySigned={!!proposal.signature}
+              alreadySigned={!!signature}
               existingSignature={
-                proposal.signature
+                signature
                   ? {
-                      typedName: proposal.signature.typedName,
-                      signedAt: proposal.signature.signedAt.toISOString(),
-                      signatureImage: proposal.signature.signatureImage,
+                      typedName: signature.typedName,
+                      signedAt: new Date(signature.signedAt).toISOString(),
+                      signatureImage: signature.signatureImage,
                     }
                   : null
               }

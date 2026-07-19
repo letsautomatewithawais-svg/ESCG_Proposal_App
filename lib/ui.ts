@@ -92,18 +92,19 @@ export const brand = {
    * label-over-input field — the denser, more restrained pattern a reference
    * dashboard (Stripe) uses for its filter row. */
   filterPill:
-    "flex items-center gap-1.5 rounded-full border border-hairline bg-white px-3 py-1.5 text-xs text-content-charcoal transition-colors focus-within:border-brand-green",
+    "flex items-center gap-1.5 rounded-full border border-hairline bg-neutral-tint px-3 py-1.5 text-xs text-content-charcoal transition-colors focus-within:border-brand-primary",
   /** Small colored circular chip behind a standalone icon (stat cards, card
    * headers). Compose with a per-context bg/text pair, e.g.
-   * `bg-brand-green-tint text-brand-green`. */
+   * `bg-brand-green-tint text-brand-green` for the Signed stat,
+   * `bg-brand-primary-tint text-brand-primary` for brand/neutral chips. */
   iconChip: "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
   /**
-   * Custom focus-visible ring (brand-green, offset so it reads as floating
+   * Custom focus-visible ring (brand-primary, offset so it reads as floating
    * rather than a hard outline) — use instead of ad-hoc
-   * `focus:ring-1 focus:ring-brand-green` on new interactive elements.
+   * `focus:ring-1 focus:ring-brand-primary` on new interactive elements.
    */
   focusRing:
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-off",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-off",
   /** Button-press micro-interaction — cheap, GPU-only, one of the more
    * noticeable "this was actually designed" signals on click. */
   pressable: "transition-transform active:scale-[0.97]",

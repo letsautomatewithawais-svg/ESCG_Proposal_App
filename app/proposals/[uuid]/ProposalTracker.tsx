@@ -4,6 +4,10 @@ import { useEffect } from "react";
 
 const HEARTBEAT_INTERVAL_SECONDS = 15;
 const SECTION_DWELL_MS = 1500;
+const MIN_REPORTABLE_SECONDS = 1;
+// A section must occupy at least this much of its own height within the
+// viewport to count as "being read" — below this, no section is credited.
+const DOMINANT_VISIBLE_RATIO = 0.5;
 
 const TRACKED_SECTIONS = [
   { id: "section-introduction", name: "Introduction" },
@@ -12,6 +16,8 @@ const TRACKED_SECTIONS = [
   { id: "section-terms", name: "Terms" },
   { id: "section-signature-block", name: "Signature Block" },
 ];
+
+type TrackedSection = { el: HTMLElement; name: string };
 
 function trackUrl(proposalId: string) {
   return `/api/proposals/${proposalId}/track`;
@@ -25,12 +31,142 @@ function sendTrackingEvent(proposalId: string, payload: Record<string, unknown>)
   }).catch(() => {});
 }
 
+function sendTrackingBeacon(proposalId: string, payload: Record<string, unknown>) {
+  try {
+    const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+    navigator.sendBeacon(trackUrl(proposalId), blob);
+  } catch {
+    // sendBeacon can be blocked or unavailable; exiting silently is fine here.
+  }
+}
+
+function measure(el: HTMLElement, viewportHeight: number) {
+  const rect = el.getBoundingClientRect();
+  const visibleTop = Math.max(rect.top, 0);
+  const visibleBottom = Math.min(rect.bottom, viewportHeight);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  const ratio = rect.height > 0 ? visibleHeight / rect.height : 0;
+  const distanceFromCenter = Math.abs(viewportHeight / 2 - (rect.top + rect.height / 2));
+  return { ratio, distanceFromCenter };
+}
+
+// Only one section can ever be "dominant" at a time — this is what prevents
+// two overlapping-in-viewport sections from both accumulating time at once.
+// On a tall viewport, several short sections can all be ~100% visible
+// together, so ties (and near-ties) are broken by proximity to the vertical
+// center of the viewport — a better proxy for "what's actually being read"
+// than an arbitrary first/last-wins rule.
+function computeDominant(sections: TrackedSection[]): TrackedSection | null {
+  let best: TrackedSection | null = null;
+  let bestDistance = Infinity;
+  for (const section of sections) {
+    const { ratio, distanceFromCenter } = measure(section.el, window.innerHeight);
+    if (ratio < DOMINANT_VISIBLE_RATIO) continue;
+    if (distanceFromCenter < bestDistance) {
+      bestDistance = distanceFromCenter;
+      best = section;
+    }
+  }
+  return best;
+}
+
 export default function ProposalTracker({ proposalId }: { proposalId: string }) {
   useEffect(() => {
     sendTrackingEvent(proposalId, { event: "open" });
 
+    const sections: TrackedSection[] = [];
+    for (const { id, name } of TRACKED_SECTIONS) {
+      const el = document.getElementById(id);
+      if (el) sections.push({ el, name });
+    }
+
     let intervalId: ReturnType<typeof setInterval> | null = null;
     let lastHeartbeatAt = Date.now();
+
+    // The single section currently being timed (confirmed, i.e. past its
+    // initial dwell), and the candidate awaiting dwell confirmation.
+    let dominant: TrackedSection | null = null;
+    let pendingCandidate: TrackedSection | null = null;
+    let dwellTimer: ReturnType<typeof setTimeout> | null = null;
+    let activeSince: number | null = null;
+    const confirmedSections = new Set<string>();
+
+    function isPageVisible() {
+      return document.visibilityState === "visible";
+    }
+
+    function flushDominant(now: number, useBeacon: boolean) {
+      if (activeSince === null || dominant === null) return;
+      const elapsedSeconds = (now - activeSince) / 1000;
+      activeSince = null;
+      if (elapsedSeconds < MIN_REPORTABLE_SECONDS) return;
+      const payload = {
+        event: "sectionTime",
+        sectionName: dominant.name,
+        intervalSeconds: elapsedSeconds,
+      };
+      if (useBeacon) {
+        sendTrackingBeacon(proposalId, payload);
+      } else {
+        sendTrackingEvent(proposalId, payload);
+      }
+    }
+
+    function resumeTiming(now: number) {
+      if (dominant !== null && activeSince === null && isPageVisible()) {
+        activeSince = now;
+      }
+    }
+
+    function setDominant(next: TrackedSection | null, now: number) {
+      if (next?.el === dominant?.el) return;
+      flushDominant(now, false);
+      dominant = next;
+      resumeTiming(now);
+    }
+
+    function handleCandidateChange(candidate: TrackedSection | null) {
+      if (candidate?.el === pendingCandidate?.el) return;
+
+      if (dwellTimer !== null) {
+        clearTimeout(dwellTimer);
+        dwellTimer = null;
+      }
+      pendingCandidate = candidate;
+
+      if (candidate === null) {
+        setDominant(null, Date.now());
+        return;
+      }
+
+      if (confirmedSections.has(candidate.name)) {
+        // Already confirmed on an earlier pass (user scrolled back) — resume
+        // timing immediately, no need to re-dwell.
+        setDominant(candidate, Date.now());
+        return;
+      }
+
+      dwellTimer = setTimeout(() => {
+        dwellTimer = null;
+        confirmedSections.add(candidate.name);
+        sendTrackingEvent(proposalId, { event: "section", sectionName: candidate.name });
+        setDominant(candidate, Date.now());
+      }, SECTION_DWELL_MS);
+    }
+
+    function recomputeDominant() {
+      handleCandidateChange(computeDominant(sections));
+    }
+
+    let scrollScheduled = false;
+    function onScrollOrResize() {
+      if (scrollScheduled) return;
+      scrollScheduled = true;
+      requestAnimationFrame(() => {
+        scrollScheduled = false;
+        recomputeDominant();
+      });
+    }
 
     function sendHeartbeat() {
       sendTrackingEvent(proposalId, {
@@ -38,6 +174,14 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
         intervalSeconds: HEARTBEAT_INTERVAL_SECONDS,
       });
       lastHeartbeatAt = Date.now();
+
+      // Rolling flush so a long single dwell doesn't sit unflushed until the
+      // section is finally left.
+      if (activeSince !== null) {
+        const now = Date.now();
+        flushDominant(now, false);
+        resumeTiming(now);
+      }
     }
 
     function startInterval() {
@@ -53,10 +197,13 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
     }
 
     function handleVisibilityChange() {
+      const now = Date.now();
       if (document.visibilityState === "visible") {
         startInterval();
+        resumeTiming(now);
       } else {
         stopInterval();
+        flushDominant(now, false);
       }
     }
 
@@ -64,71 +211,34 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       startInterval();
     }
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
 
     function handlePageHide() {
-      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
 
-      const elapsedSeconds = (Date.now() - lastHeartbeatAt) / 1000;
-      if (elapsedSeconds < 1) return;
-
-      try {
-        const blob = new Blob(
-          [JSON.stringify({ event: "heartbeat", intervalSeconds: elapsedSeconds })],
-          { type: "application/json" },
-        );
-        navigator.sendBeacon(trackUrl(proposalId), blob);
-      } catch {
-        // sendBeacon can be blocked or unavailable; exiting silently is fine here.
+      if (document.visibilityState === "visible") {
+        const elapsedSeconds = (now - lastHeartbeatAt) / 1000;
+        if (elapsedSeconds >= MIN_REPORTABLE_SECONDS) {
+          sendTrackingBeacon(proposalId, { event: "heartbeat", intervalSeconds: elapsedSeconds });
+        }
       }
+
+      flushDominant(now, true);
     }
 
     window.addEventListener("pagehide", handlePageHide);
 
-    const dwellTimers = new Map<Element, ReturnType<typeof setTimeout>>();
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const el = entry.target;
-
-          if (!entry.isIntersecting) {
-            const pendingTimer = dwellTimers.get(el);
-            if (pendingTimer) {
-              clearTimeout(pendingTimer);
-              dwellTimers.delete(el);
-            }
-            continue;
-          }
-
-          if (dwellTimers.has(el)) continue;
-
-          const timer = setTimeout(() => {
-            dwellTimers.delete(el);
-            const sectionName = el.getAttribute("data-section-name");
-            if (sectionName) {
-              sendTrackingEvent(proposalId, { event: "section", sectionName });
-            }
-            observer.unobserve(el);
-          }, SECTION_DWELL_MS);
-          dwellTimers.set(el, timer);
-        }
-      },
-      { threshold: 0.5 },
-    );
-
-    for (const { id, name } of TRACKED_SECTIONS) {
-      const el = document.getElementById(id);
-      if (!el) continue;
-      el.setAttribute("data-section-name", name);
-      observer.observe(el);
-    }
+    recomputeDominant();
 
     return () => {
       stopInterval();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
       window.removeEventListener("pagehide", handlePageHide);
-      for (const timer of dwellTimers.values()) clearTimeout(timer);
-      observer.disconnect();
+      if (dwellTimer !== null) clearTimeout(dwellTimer);
+      flushDominant(Date.now(), false);
     };
   }, [proposalId]);
 

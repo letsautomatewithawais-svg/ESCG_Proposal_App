@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { sendProposalEmail } from "@/lib/email";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -103,11 +103,12 @@ export async function POST(request: Request) {
   const id = uuidv4();
 
   try {
-    const proposal = await prisma.proposal.create({
-      data: {
+    const { data: proposal, error } = await supabaseAdmin
+      .from("Proposal")
+      .insert({
         id,
         status: data.sendMode === "send_now" ? "Sent" : "Draft",
-        walkThroughDate: new Date(data.walkThroughDate),
+        walkThroughDate: new Date(data.walkThroughDate).toISOString(),
         companyName: data.companyName.trim(),
         companyAddress: data.companyAddress.trim(),
         clientName: data.clientName.trim(),
@@ -119,9 +120,13 @@ export async function POST(request: Request) {
         totalMonthlyInclGst:
           Math.round(data.monthlyCostExclGst * GST_MULTIPLIER * 100) / 100,
         acquisitionMethod: data.acquisitionMethod,
-      },
-      select: { id: true },
-    });
+        // No DB default for updatedAt (unlike Prisma, which set this client-side) — must set explicitly.
+        updatedAt: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (error) throw error;
 
     let emailSent: boolean | undefined;
     if (data.sendMode === "send_now") {

@@ -53,12 +53,19 @@
 @theme {
   --color-brand-green: #1f5c3f;
   --color-brand-green-tint: #eaf2ec;
+  /* Brand/action identity (buttons, active nav, logo, focus rings, progress).
+     Deliberately separate from brand-green, which stays reserved for the
+     Signed status semantic — recoloring brand-green in place would have
+     turned "Signed" pills purple along with every button. */
+  --color-brand-primary: #7c5cfc;
+  --color-brand-primary-tint: #f1eefe;
   --color-content-charcoal: #1f2421;
   /* Supersedes --color-warmgray — remove warmgray once the admin section finishes migrating off the old palette. */
   --color-text-muted: #8a8e86;
-  /* Supersedes --color-paper — remove paper once the admin section finishes migrating off the old palette. */
-  --color-surface-off: #fafaf8;
-  --color-neutral-tint: #f0efe9;
+  /* Supersedes --color-paper — remove paper once the admin section finishes migrating off the old palette.
+     Cool lavender undertone (was a warm beige-gray) to match the purple identity. */
+  --color-surface-off: #f7f6fb;
+  --color-neutral-tint: #eeecf5;
   /* Opened status pill only. No amber/warning token existed in the original
      ink/paper/sage/warmgray/gold/hairline palette — gold is explicitly
      reserved for pricing emphasis, not free to reuse here — so this is new,
@@ -84,11 +91,11 @@
    */
   /* Hover backgrounds (nav links, rows) — was reusing neutral-tint, which is
      also the icon-chip fill color; one gray was doing two unrelated jobs. */
-  --color-surface-hover: #f5f3ee;
+  --color-surface-hover: #f2f0f9;
   /* Secondary/internal dividers inside a card (e.g. between stacked sections
      in a detail card) — lighter than hairline, which stays reserved for
      actual card/row boundaries so hierarchy is visible, not uniform. */
-  --color-border-subtle: #eae5d9;
+  --color-border-subtle: #e6e3f0;
   /* Emphasized borders/dividers where hairline reads too quiet. */
   --color-border-strong: #c7bfac;
   /* Genuinely disabled text (e.g. a "coming soon" menu item) — was reusing

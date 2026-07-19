@@ -1,7 +1,9 @@
 import { Suspense } from "react";
-import { prisma } from "@/lib/prisma";
-import StatStrip from "./StatStrip";
-import ProposalsTable from "./ProposalsTable";
+import { supabaseAdmin } from "@/lib/supabase";
+import ProposalsWorkspace from "./ProposalsWorkspace";
+
+// Always reflects live proposal/engagement data — never statically prerendered.
+export const dynamic = "force-dynamic";
 
 const TREND_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -34,13 +36,24 @@ function summarize(events: Date[], now: Date): StatSummary {
 async function getProposalsPageData() {
   const now = new Date();
 
-  const proposals = await prisma.proposal.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      proposalView: { select: { openCount: true, firstOpenAt: true, totalSeconds: true } },
-      signature: { select: { signedAt: true } },
-    },
-  });
+  const { data: proposals, error: proposalsError } = await supabaseAdmin
+    .from("Proposal")
+    .select("id, clientName, companyName, status, createdAt, updatedAt, totalMonthlyInclGst")
+    .order("createdAt", { ascending: false });
+  if (proposalsError) throw proposalsError;
+
+  const { data: proposalViews, error: viewsError } = await supabaseAdmin
+    .from("ProposalView")
+    .select("proposalId, openCount, firstOpenAt, totalSeconds");
+  if (viewsError) throw viewsError;
+
+  const { data: signatures, error: signaturesError } = await supabaseAdmin
+    .from("Signature")
+    .select("proposalId, signedAt");
+  if (signaturesError) throw signaturesError;
+
+  const viewByProposalId = new Map((proposalViews ?? []).map((v) => [v.proposalId, v]));
+  const signatureByProposalId = new Map((signatures ?? []).map((s) => [s.proposalId, s]));
 
   // Each stat's timeline uses the one real timestamp that actually marks
   // that transition — Signature.signedAt and ProposalView.firstOpenAt are
@@ -48,40 +61,50 @@ async function getProposalsPageData() {
   // are effectively terminal-until-the-next-transition states, so the
   // current status's updatedAt reliably reflects when that transition
   // happened (nothing else touches the row afterward until it moves again).
-  const totalStat = summarize(proposals.map((p) => p.createdAt), now);
+  const totalStat = summarize(
+    proposals.map((p) => new Date(p.createdAt)),
+    now,
+  );
   const sentStat = summarize(
-    proposals.filter((p) => p.status === "Sent").map((p) => p.updatedAt),
+    proposals.filter((p) => p.status === "Sent").map((p) => new Date(p.updatedAt)),
     now,
   );
   const openedStat = summarize(
-    proposals.filter((p) => p.proposalView).map((p) => p.proposalView!.firstOpenAt),
+    proposals
+      .filter((p) => viewByProposalId.has(p.id))
+      .map((p) => new Date(viewByProposalId.get(p.id)!.firstOpenAt)),
     now,
   );
   const signedStat = summarize(
-    proposals.filter((p) => p.signature).map((p) => p.signature!.signedAt),
+    proposals
+      .filter((p) => signatureByProposalId.has(p.id))
+      .map((p) => new Date(signatureByProposalId.get(p.id)!.signedAt)),
     now,
   );
   const lostStat = summarize(
-    proposals.filter((p) => p.status === "Lost").map((p) => p.updatedAt),
+    proposals.filter((p) => p.status === "Lost").map((p) => new Date(p.updatedAt)),
     now,
   );
 
-  const lastActivityAt = proposals.reduce(
-    (latest: Date | null, p) => (!latest || p.updatedAt > latest ? p.updatedAt : latest),
-    null as Date | null,
-  );
+  const lastActivityAt = proposals.reduce((latest: Date | null, p) => {
+    const updatedAt = new Date(p.updatedAt);
+    return !latest || updatedAt > latest ? updatedAt : latest;
+  }, null as Date | null);
 
-  const tableProposals = proposals.map((p) => ({
-    id: p.id,
-    clientName: p.clientName,
-    companyName: p.companyName,
-    status: p.status,
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
-    totalMonthlyInclGst: p.totalMonthlyInclGst.toString(),
-    openCount: p.proposalView?.openCount ?? 0,
-    totalSeconds: p.proposalView?.totalSeconds ?? null,
-  }));
+  const tableProposals = proposals.map((p) => {
+    const view = viewByProposalId.get(p.id);
+    return {
+      id: p.id,
+      clientName: p.clientName,
+      companyName: p.companyName,
+      status: p.status,
+      createdAt: new Date(p.createdAt).toISOString(),
+      updatedAt: new Date(p.updatedAt).toISOString(),
+      totalMonthlyInclGst: String(p.totalMonthlyInclGst),
+      openCount: view?.openCount ?? 0,
+      totalSeconds: view?.totalSeconds ?? null,
+    };
+  });
 
   return {
     totalStat,
@@ -99,18 +122,16 @@ export default async function AdminWorkspacePage() {
     await getProposalsPageData();
 
   return (
-    <div>
-      <StatStrip
+    <Suspense fallback={null}>
+      <ProposalsWorkspace
         total={totalStat}
         sent={sentStat}
         opened={openedStat}
         signed={signedStat}
         lost={lostStat}
         lastActivityAt={lastActivityAt ? lastActivityAt.toISOString() : null}
+        tableProposals={tableProposals}
       />
-      <Suspense fallback={null}>
-        <ProposalsTable proposals={tableProposals} />
-      </Suspense>
-    </div>
+    </Suspense>
   );
 }

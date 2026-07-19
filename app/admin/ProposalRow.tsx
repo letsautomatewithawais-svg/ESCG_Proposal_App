@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { IconCheck, IconDotsVertical, IconLink } from "@tabler/icons-react";
 import StatusPill, { statusVisual } from "./StatusPill";
 import { brand } from "@/lib/ui";
@@ -12,6 +12,12 @@ import {
   formatRelativeTime,
   referenceNumber,
 } from "@/lib/format";
+
+// Never actually fires — just lets useSyncExternalStore give the server a
+// stable snapshot and the client its real one, without a hydration mismatch.
+function subscribeToNothing() {
+  return () => {};
+}
 
 type ProposalRowProps = {
   id: string;
@@ -37,6 +43,7 @@ export default function ProposalRow({
   totalSeconds,
 }: ProposalRowProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStatus, setCurrentStatus] = useState(status);
   const [copied, setCopied] = useState(false);
   const [isMarkingLost, setIsMarkingLost] = useState(false);
@@ -46,6 +53,16 @@ export default function ProposalRow({
   const [actionWarning, setActionWarning] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const hasActivity = new Date(updatedAt).getTime() - new Date(createdAt).getTime() > 2000;
+  // "X hours ago" depends on the current moment, which differs between the
+  // server render and client hydration — a plain computation would mismatch.
+  // useSyncExternalStore lets the server render a stable snapshot while the
+  // client renders the real, live value, with no hydration warning.
+  const lastActivityDisplay = useSyncExternalStore(
+    subscribeToNothing,
+    () => (hasActivity ? formatRelativeTime(new Date(updatedAt)) : "Never"),
+    () => (hasActivity ? "" : "Never"),
+  );
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -68,7 +85,13 @@ export default function ProposalRow({
   }, [menuOpen]);
 
   function goToDetail() {
-    router.push(`/admin/${id}`);
+    // A ?selected= URL param handled client-side by ProposalsWorkspace, not
+    // a route change to /admin/[id] — that used to be a real Next.js
+    // navigation (server re-fetch + page transition) despite looking like a
+    // side panel opening.
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("selected", id);
+    router.push(`/admin?${params.toString()}`, { scroll: false });
   }
 
   async function handleCopyLink() {
@@ -167,26 +190,23 @@ export default function ProposalRow({
 
   const visual = statusVisual(currentStatus);
   const RowIcon = visual.icon;
-  const createdAtDate = new Date(createdAt);
-  const updatedAtDate = new Date(updatedAt);
-  const hasActivity = updatedAtDate.getTime() - createdAtDate.getTime() > 2000;
-  const lastActivityDisplay = hasActivity ? formatRelativeTime(updatedAtDate) : "Never";
 
   return (
     <div className="border-b border-hairline last:border-0">
       <div
         onClick={goToDetail}
-        className="flex cursor-pointer items-center gap-4 px-5 py-3.5 transition-all hover:bg-surface-hover hover:shadow-[inset_3px_0_0_0_#1f5c3f]"
+        className="flex cursor-pointer items-center gap-3 px-5 py-2.5 transition-all hover:bg-surface-hover hover:shadow-[inset_3px_0_0_0_var(--color-brand-primary)]"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className={`${brand.iconChip} h-8 w-8 shrink-0 rounded-[8px] ${visual.chipClassName}`}>
-            <RowIcon size={15} stroke={1.9} className={visual.iconClassName} />
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div className={`${brand.iconChip} h-7 w-7 shrink-0 rounded-[7px] ${visual.chipClassName}`}>
+            <RowIcon size={13} stroke={1.9} className={visual.iconClassName} />
           </div>
           <div className="min-w-0">
             <Link
-              href={`/admin/${id}`}
+              href={`/admin?selected=${id}`}
+              scroll={false}
               onClick={(e) => e.stopPropagation()}
-              className="block truncate text-sm font-semibold text-content-charcoal hover:text-brand-green"
+              className="block truncate text-sm font-semibold text-content-charcoal hover:text-brand-primary"
             >
               {clientName}
             </Link>

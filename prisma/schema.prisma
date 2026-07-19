@@ -72,6 +72,7 @@ model SectionView {
   proposal      Proposal @relation(fields: [proposalId], references: [id])
   sectionName   String
   firstViewedAt DateTime
+  totalSeconds  Int      @default(0)
   createdAt     DateTime @default(now())
 
   @@unique([proposalId, sectionName])
