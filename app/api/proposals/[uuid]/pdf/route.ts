@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
 import { supabaseAdmin } from "@/lib/supabase";
 
 // Puppeteer cold-start (serverless Chromium) + render + export can run a few
@@ -39,24 +38,35 @@ export async function GET(
   // serverless functions. Locally (any dev machine), that binary won't run —
   // point PUPPETEER_EXECUTABLE_PATH at a real Chrome/Chromium install instead.
   const isServerless = Boolean(process.env.VERCEL);
-  const executablePath = isServerless
-    ? await chromium.executablePath()
-    : process.env.PUPPETEER_EXECUTABLE_PATH;
-
-  if (!executablePath) {
-    console.error(
-      "PDF export: no Chromium executable available. Set PUPPETEER_EXECUTABLE_PATH for local dev.",
-    );
-    return NextResponse.json(
-      { error: "PDF generation is not configured on this environment." },
-      { status: 500 },
-    );
-  }
 
   let browser;
   try {
+    // `@sparticuz/chromium` is a pure-ESM package with no CJS export
+    // condition, so Node falls back to its experimental require(ESM)
+    // interop for a static `import` — which silently drops the package's
+    // getter-based properties (`.args`, `.executablePath` all come back
+    // `undefined`/non-functions). A dynamic import() always goes through
+    // the real ESM loader instead, which exposes them correctly. This was
+    // the actual cause of the PDF route crashing on Vercel with a bodiless
+    // 500 — `chromium.executablePath()` threw before this was ever in a
+    // try/catch.
+    const chromium = isServerless ? (await import("@sparticuz/chromium")).default : null;
+    const executablePath = isServerless
+      ? await chromium!.executablePath()
+      : process.env.PUPPETEER_EXECUTABLE_PATH;
+
+    if (!executablePath) {
+      console.error(
+        "PDF export: no Chromium executable available. Set PUPPETEER_EXECUTABLE_PATH for local dev.",
+      );
+      return NextResponse.json(
+        { error: "PDF generation is not configured on this environment." },
+        { status: 500 },
+      );
+    }
+
     browser = await puppeteer.launch({
-      args: isServerless ? chromium.args : [],
+      args: isServerless ? chromium!.args : [],
       // Puppeteer-core's own default viewport is narrow enough to trip the
       // page's mobile Tailwind breakpoint — force the desktop/print layout.
       defaultViewport: { width: 1240, height: 1754 },
