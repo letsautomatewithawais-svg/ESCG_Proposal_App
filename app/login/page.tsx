@@ -80,7 +80,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
+    <div className="grid min-h-dvh lg:grid-cols-2">
       {/* Brand panel — hidden below lg so mobile stays a plain, uncluttered
           form (this has nowhere useful to go on a narrow screen); on wider
           viewports it's what actually uses the space a lone centered card
@@ -111,7 +111,7 @@ export default function LoginPage() {
       </div>
 
       {/* Form panel */}
-      <div className="flex min-h-screen items-center justify-center bg-surface-off px-6 py-16 lg:min-h-0">
+      <div className="flex min-h-dvh items-center justify-center bg-surface-off px-6 py-16 lg:min-h-0">
         <div className="w-full max-w-[360px]">
           <div className="mb-8 lg:hidden">
             <BrandMark tone="light" />
