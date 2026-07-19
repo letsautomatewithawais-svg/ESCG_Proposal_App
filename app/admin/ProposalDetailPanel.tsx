@@ -1,8 +1,10 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button, buttonClasses } from "@/app/components/Button";
 import {
   formatCurrencyAUD,
   formatDateAU,
@@ -11,7 +13,7 @@ import {
   formatDurationSeconds,
   referenceNumber,
 } from "@/lib/format";
-import { brand } from "@/lib/ui";
+import { brand, REFRESH_EVENT } from "@/lib/ui";
 import StatusPill from "@/app/admin/StatusPill";
 import {
   IconArrowLeft,
@@ -19,8 +21,18 @@ import {
   IconClock,
   IconEye,
   IconFileDescription,
+  IconHistory,
   IconReceipt2,
+  IconRefresh,
 } from "@tabler/icons-react";
+
+// A proposal's engagement stats (opens, time on page, section progress)
+// change live while an admin is looking at this exact panel — the client
+// might be reading the proposal right now. Refreshing the whole browser tab
+// to see that was the actual complaint, so this panel refetches on its own
+// periodically, on a manual click, and whenever the shared Topbar refresh
+// button fires (see Topbar.tsx, which dispatches REFRESH_EVENT).
+const AUTO_REFRESH_INTERVAL_MS = 20_000;
 
 const TRACKED_SECTIONS = [
   "Introduction",
@@ -51,6 +63,7 @@ type DetailResponse = {
   signature: { typedName: string; signedAt: string; signatureImage: string } | null;
   proposalView: { firstOpenAt: string; totalSeconds: number; openCount: number } | null;
   sectionViews: { sectionName: string; firstViewedAt: string; totalSeconds: number }[];
+  visits: { id: string; startedAt: string; totalSeconds: number }[];
 };
 
 function CardHeading({ icon: Icon, children }: { icon: StatIcon; children: React.ReactNode }) {
@@ -80,35 +93,150 @@ function EngagementStat({ icon: Icon, label, value }: { icon: StatIcon; label: s
   );
 }
 
+// Same muted/simple admin-color override pattern used by new/page.tsx's
+// modal buttons, so "Back to Proposals" reads as a plain, restrained action
+// rather than competing with the primary "Send Proposal" button beside it.
+const secondaryButtonClass =
+  "rounded-[8px]! border-hairline! text-content-charcoal! hover:bg-surface-hover!";
+const primaryButtonClass =
+  "rounded-[8px]! bg-brand-primary! text-white! hover:bg-brand-primary/90! focus-visible:ring-brand-primary!";
+
 // Caller must render this with `key={proposalId}` so switching proposals
 // remounts fresh (state naturally resets) instead of needing an effect to
 // manually clear stale data/error before the new fetch resolves.
 export default function ProposalDetailPanel({ proposalId }: { proposalId: string }) {
+  const router = useRouter();
   const [data, setData] = useState<DetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isMarkingLost, setIsMarkingLost] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionWarning, setActionWarning] = useState<string | null>(null);
+  const cancelledRef = useRef(false);
+  // Tracks whether we've ever successfully loaded data, without making
+  // `loadData` depend on `data` state (that would recreate it — and reset
+  // the polling interval below — on every successful poll).
+  const hasLoadedRef = useRef(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch(`/api/proposals/${proposalId}`)
-      .then(async (res) => {
+  // `showSpinner` is false for background polls/silent refreshes so the
+  // whole panel doesn't flash back to "Loading proposal…" every 20 seconds
+  // — only the very first load (and an explicit manual refresh) show it.
+  const loadData = useCallback(
+    async (showSpinner: boolean) => {
+      if (showSpinner) setIsRefreshing(true);
+      try {
+        const res = await fetch(`/api/proposals/${proposalId}`);
         if (!res.ok) {
           const json = await res.json().catch(() => ({}));
           throw new Error(typeof json?.error === "string" ? json.error : "Failed to load.");
         }
-        return res.json();
-      })
-      .then((json: DetailResponse) => {
-        if (!cancelled) setData(json);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load.");
-      });
+        const json: DetailResponse = await res.json();
+        if (!cancelledRef.current) {
+          setData(json);
+          hasLoadedRef.current = true;
+        }
+      } catch (err) {
+        if (!cancelledRef.current) {
+          // A background poll failing (a dropped request, a momentary 500)
+          // shouldn't blow away an already-loaded panel — only surface the
+          // error state if we never managed to load anything at all.
+          if (hasLoadedRef.current) {
+            console.error("Background proposal refresh failed:", err);
+          } else {
+            setError(err instanceof Error ? err.message : "Failed to load.");
+          }
+        }
+      } finally {
+        if (showSpinner && !cancelledRef.current) setIsRefreshing(false);
+      }
+    },
+    [proposalId],
+  );
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    // Deferred one tick (rather than called as a direct statement) so this
+    // reads the same way to the react-hooks lint rule as the interval/event
+    // callbacks below: setState happens inside a callback triggered by an
+    // external event (a timer, a fetch response), never synchronously
+    // during the effect's own commit.
+    const initialLoadId = setTimeout(() => loadData(false), 0);
+
+    const intervalId = setInterval(() => loadData(false), AUTO_REFRESH_INTERVAL_MS);
+    function handleExternalRefresh() {
+      loadData(true);
+    }
+    window.addEventListener(REFRESH_EVENT, handleExternalRefresh);
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
+      clearTimeout(initialLoadId);
+      clearInterval(intervalId);
+      window.removeEventListener(REFRESH_EVENT, handleExternalRefresh);
     };
-  }, [proposalId]);
+  }, [loadData]);
+
+  async function handleMarkAsLost() {
+    if (!data || data.proposal.status === "Lost") return;
+    const confirmed = window.confirm(`Mark the proposal for ${data.proposal.clientName} as Lost?`);
+    if (!confirmed) return;
+
+    setIsMarkingLost(true);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Lost" }),
+      });
+
+      if (!res.ok) {
+        setActionError("Something went wrong, please try again.");
+        return;
+      }
+
+      setData((prev) => (prev ? { ...prev, proposal: { ...prev.proposal, status: "Lost" } } : prev));
+      router.refresh();
+    } catch {
+      setActionError("Something went wrong, please try again.");
+    } finally {
+      setIsMarkingLost(false);
+    }
+  }
+
+  async function handleSendProposal() {
+    if (!data || data.proposal.status !== "Draft") return;
+
+    setIsSending(true);
+    setActionError(null);
+    setActionWarning(null);
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/send`, { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setActionError(
+          typeof json?.error === "string" ? json.error : "Something went wrong, please try again.",
+        );
+        return;
+      }
+
+      setData((prev) => (prev ? { ...prev, proposal: { ...prev.proposal, status: "Sent" } } : prev));
+      if (json?.emailSent === false) {
+        setActionWarning(
+          typeof json?.emailError === "string"
+            ? `Marked as sent, but the email failed to deliver: ${json.emailError}`
+            : "Marked as sent, but the email failed to deliver. Copy the link and send it manually.",
+        );
+      }
+      router.refresh();
+    } catch {
+      setActionError("Something went wrong, please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  }
 
   if (error) {
     return (
@@ -126,7 +254,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
     );
   }
 
-  const { proposal, signature, proposalView, sectionViews } = data;
+  const { proposal, signature, proposalView, sectionViews, visits } = data;
 
   const walkThroughDateDisplay = formatDateAU(new Date(proposal.walkThroughDate));
   const sectionViewedAt = new Map(
@@ -144,14 +272,59 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
   return (
     <div className="mx-auto w-full max-w-6xl p-2 sm:p-4">
       <div className={`${brand.card} p-5 sm:p-6`}>
-        <Link
-          href="/admin"
-          scroll={false}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-text-muted transition-colors hover:text-brand-primary"
-        >
-          <IconArrowLeft size={15} stroke={2} />
-          Back to Proposals
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href="/admin"
+            scroll={false}
+            className={buttonClasses("secondary", "sm", `gap-1.5 ${secondaryButtonClass}`)}
+          >
+            <IconArrowLeft size={15} stroke={2} />
+            Back to Proposals
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => loadData(true)}
+              disabled={isRefreshing}
+              title="Refresh"
+              className="flex h-8 w-8 items-center justify-center rounded-[8px] text-text-muted transition-all hover:bg-surface-hover hover:text-content-charcoal disabled:opacity-50"
+            >
+              <IconRefresh size={16} stroke={1.9} className={isRefreshing ? "animate-spin" : ""} />
+            </button>
+            {proposal.status !== "Lost" && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleMarkAsLost}
+                disabled={isMarkingLost}
+                className={secondaryButtonClass}
+              >
+                {isMarkingLost ? "Marking…" : "Mark as Lost"}
+              </Button>
+            )}
+            {proposal.status === "Draft" && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleSendProposal}
+                disabled={isSending}
+                className={primaryButtonClass}
+              >
+                {isSending ? "Sending…" : "Send Proposal"}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {(actionError || actionWarning) && (
+          <div className="mt-3">
+            {actionError && <p className="text-xs text-red-600">{actionError}</p>}
+            {actionWarning && <p className="text-xs text-amber-700">{actionWarning}</p>}
+          </div>
+        )}
 
         <div className="mt-4 flex items-start justify-between gap-6 border-t border-border-subtle pt-4">
           <div>
@@ -251,6 +424,39 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {visits.length > 0 && (
+          <div className={`${brand.card} p-5 sm:p-6`}>
+            <CardHeading icon={IconHistory}>Visits</CardHeading>
+            <p className="mt-1 text-xs text-text-muted">
+              Every time this proposal was opened, in its own row — when it happened and how long
+              that visit lasted (separate from the section-by-section reading time above).
+            </p>
+
+            <div className="mt-4 divide-y divide-hairline">
+              {visits.map((visit, index) => (
+                <div key={visit.id} className="flex items-center justify-between gap-4 py-2.5 first:pt-0">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`${brand.iconChip} h-7 w-7 bg-neutral-tint`}>
+                      <IconEye size={13} stroke={1.9} className="text-content-charcoal/70" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-content-charcoal">
+                        Visit {visits.length - index}
+                      </p>
+                      <p className="mt-0.5 font-ticket-mono text-xs text-text-muted">
+                        {formatDateTimeAUWithSeconds(new Date(visit.startedAt))}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="font-ticket-mono text-sm tabular-nums text-content-charcoal">
+                    {formatDurationSeconds(visit.totalSeconds)}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         )}

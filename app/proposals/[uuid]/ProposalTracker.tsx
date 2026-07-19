@@ -72,7 +72,13 @@ function computeDominant(sections: TrackedSection[]): TrackedSection | null {
 
 export default function ProposalTracker({ proposalId }: { proposalId: string }) {
   useEffect(() => {
-    sendTrackingEvent(proposalId, { event: "open" });
+    // One id per page load ("visit"), sent alongside open/heartbeat events
+    // so the admin can see each individual visit's start time + duration
+    // (see ProposalVisit in the tracking API), not just the proposal-wide
+    // open count/total time.
+    const visitId = crypto.randomUUID();
+
+    sendTrackingEvent(proposalId, { event: "open", visitId });
 
     const sections: TrackedSection[] = [];
     for (const { id, name } of TRACKED_SECTIONS) {
@@ -172,6 +178,7 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       sendTrackingEvent(proposalId, {
         event: "heartbeat",
         intervalSeconds: HEARTBEAT_INTERVAL_SECONDS,
+        visitId,
       });
       lastHeartbeatAt = Date.now();
 
@@ -220,7 +227,7 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       if (document.visibilityState === "visible") {
         const elapsedSeconds = (now - lastHeartbeatAt) / 1000;
         if (elapsedSeconds >= MIN_REPORTABLE_SECONDS) {
-          sendTrackingBeacon(proposalId, { event: "heartbeat", intervalSeconds: elapsedSeconds });
+          sendTrackingBeacon(proposalId, { event: "heartbeat", intervalSeconds: elapsedSeconds, visitId });
         }
       }
 

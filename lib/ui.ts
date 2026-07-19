@@ -6,6 +6,11 @@
 // warmgray (muted text), gold (pricing total emphasis only), hairline
 // (borders). See app/globals.css for the @theme definitions.
 
+// Fired by the admin Topbar's manual refresh button so client components
+// with their own fetch (unreached by Next's router.refresh()) — currently
+// ProposalDetailPanel — can reload too.
+export const REFRESH_EVENT = "escg:refresh";
+
 export const text = {
   /** Top-level page heading, e.g. "Proposals", "New Proposal". Serif display face. */
   pageTitle: "font-serif text-2xl font-semibold tracking-tight text-ink sm:text-3xl",

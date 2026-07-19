@@ -76,6 +76,22 @@ type SectionViewInsert = Omit<SectionViewRow, "totalSeconds" | "createdAt"> & {
 };
 type SectionViewUpdate = Partial<SectionViewRow>;
 
+type ProposalVisitRow = {
+  id: string;
+  proposalId: string;
+  startedAt: string;
+  lastSeenAt: string;
+  totalSeconds: number;
+  createdAt: string;
+};
+type ProposalVisitInsert = Omit<ProposalVisitRow, "startedAt" | "lastSeenAt" | "totalSeconds" | "createdAt"> & {
+  startedAt?: string;
+  lastSeenAt?: string;
+  totalSeconds?: number;
+  createdAt?: string;
+};
+type ProposalVisitUpdate = Partial<ProposalVisitRow>;
+
 export type Database = {
   public: {
     Tables: {
@@ -103,9 +119,39 @@ export type Database = {
         Update: SectionViewUpdate;
         Relationships: [];
       };
+      ProposalVisit: {
+        Row: ProposalVisitRow;
+        Insert: ProposalVisitInsert;
+        Update: ProposalVisitUpdate;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      // Atomic increment/upsert RPCs — see database-updates.sql's
+      // "2026-07-19 (2)" section for why these replaced select-then-update
+      // calls in app/api/proposals/[uuid]/track/route.ts.
+      record_proposal_open: {
+        Args: { p_proposal_id: string; p_ip: string | null; p_user_agent: string | null };
+        Returns: void;
+      };
+      increment_proposal_view_seconds: {
+        Args: { p_proposal_id: string; p_delta: number };
+        Returns: void;
+      };
+      increment_section_view_seconds: {
+        Args: { p_proposal_id: string; p_section_name: string; p_delta: number };
+        Returns: void;
+      };
+      record_proposal_visit: {
+        Args: { p_visit_id: string; p_proposal_id: string };
+        Returns: void;
+      };
+      increment_proposal_visit_seconds: {
+        Args: { p_visit_id: string; p_delta: number };
+        Returns: void;
+      };
+    };
     Enums: {
       ProposalStatus: ProposalStatus;
     };

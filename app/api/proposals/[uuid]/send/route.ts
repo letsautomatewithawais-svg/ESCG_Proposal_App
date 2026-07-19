@@ -6,6 +6,14 @@ import { sendProposalEmail } from "@/lib/email";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function describeEmailError(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return "Unknown email delivery error — check server logs.";
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ uuid: string }> },
@@ -55,7 +63,17 @@ export async function POST(
 
     if (updateError) throw updateError;
 
-    return NextResponse.json({ success: true, emailSent: result.success }, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        emailSent: result.success,
+        // Surfaced in the admin UI so a delivery failure (bad/missing API
+        // key, unverified sender domain, provider outage, etc.) is
+        // diagnosable from the dashboard instead of only server logs.
+        emailError: result.success ? undefined : describeEmailError(result.error),
+      },
+      { status: 200 },
+    );
   } catch (err) {
     console.error("Failed to send proposal:", err);
     return NextResponse.json(

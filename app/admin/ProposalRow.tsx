@@ -125,7 +125,11 @@ export default function ProposalRow({
       setCurrentStatus("Sent");
       setMenuOpen(false);
       if (json?.emailSent === false) {
-        setActionWarning("Marked as sent, but the email failed to deliver. Copy the link and send it manually.");
+        setActionWarning(
+          typeof json?.emailError === "string"
+            ? `Marked as sent, but the email failed to deliver: ${json.emailError}`
+            : "Marked as sent, but the email failed to deliver. Copy the link and send it manually.",
+        );
       }
       router.refresh();
     } catch {

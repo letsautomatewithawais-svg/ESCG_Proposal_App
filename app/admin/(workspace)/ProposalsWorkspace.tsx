@@ -1,6 +1,7 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import StatStrip from "./StatStrip";
 import ProposalsTable from "./ProposalsTable";
 import ProposalDetailPanel from "@/app/admin/ProposalDetailPanel";
@@ -36,6 +37,12 @@ type ProposalsWorkspaceProps = {
 // like it was staying on the same page. Now opening a proposal shows only
 // that proposal's details, full width — no list alongside it — while still
 // avoiding any page reload.
+// How often the list silently re-fetches its server data (new opens,
+// signatures, status changes) without the admin having to hit Refresh or
+// reload the whole tab — see Topbar's manual refresh button for the
+// on-demand version of the same `router.refresh()` call.
+const AUTO_REFRESH_INTERVAL_MS = 30_000;
+
 export default function ProposalsWorkspace({
   total,
   sent,
@@ -45,8 +52,14 @@ export default function ProposalsWorkspace({
   lastActivityAt,
   tableProposals,
 }: ProposalsWorkspaceProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("selected");
+
+  useEffect(() => {
+    const intervalId = setInterval(() => router.refresh(), AUTO_REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [router]);
 
   if (selectedId) {
     return (

@@ -6,6 +6,10 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const EVENTS = ["open", "heartbeat", "section", "sectionTime"] as const;
 type TrackEvent = (typeof EVENTS)[number];
 
+function isVisitId(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -65,36 +69,25 @@ export async function POST(
         const now = new Date().toISOString();
         const ipAddress = getClientIp(request);
         const userAgent = request.headers.get("user-agent");
+        const visitId = isVisitId(body.visitId) ? body.visitId : null;
 
-        const { data: existing, error: viewFindError } = await supabaseAdmin
-          .from("ProposalView")
-          .select("openCount")
-          .eq("proposalId", proposal.id)
-          .maybeSingle();
-        if (viewFindError) throw viewFindError;
+        // Atomic create-or-increment (a Postgres upsert), replacing a prior
+        // select-then-insert-or-update — that read-modify-write pattern
+        // could lose an increment when requests raced (e.g. "open" landing
+        // alongside an in-flight heartbeat), which under-reported totals.
+        const { error: viewError } = await supabaseAdmin.rpc("record_proposal_open", {
+          p_proposal_id: proposal.id,
+          p_ip: ipAddress,
+          p_user_agent: userAgent,
+        });
+        if (viewError) throw viewError;
 
-        if (existing) {
-          const { error: viewUpdateError } = await supabaseAdmin
-            .from("ProposalView")
-            .update({
-              lastSeenAt: now,
-              openCount: existing.openCount + 1,
-              updatedAt: now,
-            })
-            .eq("proposalId", proposal.id);
-          if (viewUpdateError) throw viewUpdateError;
-        } else {
-          const { error: viewCreateError } = await supabaseAdmin.from("ProposalView").insert({
-            id: uuidv4(),
-            proposalId: proposal.id,
-            firstOpenAt: now,
-            lastSeenAt: now,
-            openCount: 1,
-            ipAddress,
-            userAgent,
-            updatedAt: now,
+        if (visitId) {
+          const { error: visitError } = await supabaseAdmin.rpc("record_proposal_visit", {
+            p_visit_id: visitId,
+            p_proposal_id: proposal.id,
           });
-          if (viewCreateError) throw viewCreateError;
+          if (visitError) throw visitError;
         }
 
         if (proposal.status === "Sent") {
@@ -115,26 +108,23 @@ export async function POST(
             ? intervalSecondsRaw
             : 0;
         const delta = Math.max(0, Math.round(intervalSeconds));
+        const visitId = isVisitId(body.visitId) ? body.visitId : null;
 
-        // Mirrors the original updateMany: silently no-ops if "open" hasn't
-        // created the ProposalView row yet.
-        const { data: existing, error: viewFindError } = await supabaseAdmin
-          .from("ProposalView")
-          .select("totalSeconds")
-          .eq("proposalId", proposal.id)
-          .maybeSingle();
-        if (viewFindError) throw viewFindError;
+        // Atomic increment (no-ops if "open" hasn't created the row yet,
+        // matching the prior behavior) — see the "open" case comment above
+        // for why this used to be a racy select-then-update.
+        const { error: viewUpdateError } = await supabaseAdmin.rpc("increment_proposal_view_seconds", {
+          p_proposal_id: proposal.id,
+          p_delta: delta,
+        });
+        if (viewUpdateError) throw viewUpdateError;
 
-        if (existing) {
-          const { error: viewUpdateError } = await supabaseAdmin
-            .from("ProposalView")
-            .update({
-              lastSeenAt: new Date().toISOString(),
-              totalSeconds: existing.totalSeconds + delta,
-              updatedAt: new Date().toISOString(),
-            })
-            .eq("proposalId", proposal.id);
-          if (viewUpdateError) throw viewUpdateError;
+        if (visitId) {
+          const { error: visitUpdateError } = await supabaseAdmin.rpc(
+            "increment_proposal_visit_seconds",
+            { p_visit_id: visitId, p_delta: delta },
+          );
+          if (visitUpdateError) throw visitUpdateError;
         }
 
         break;
@@ -180,36 +170,16 @@ export async function POST(
         const delta = Math.max(0, Math.round(intervalSeconds));
         if (delta === 0) break;
 
-        const { data: existing, error: sectionFindError } = await supabaseAdmin
-          .from("SectionView")
-          .select("totalSeconds")
-          .eq("proposalId", proposal.id)
-          .eq("sectionName", sectionName)
-          .maybeSingle();
-        if (sectionFindError) throw sectionFindError;
-
-        if (existing) {
-          const { error: sectionUpdateError } = await supabaseAdmin
-            .from("SectionView")
-            .update({ totalSeconds: existing.totalSeconds + delta })
-            .eq("proposalId", proposal.id)
-            .eq("sectionName", sectionName);
-          if (sectionUpdateError) throw sectionUpdateError;
-        } else {
-          // The dwell-confirmed "section" event normally creates this row first;
-          // this is a fallback in case that request was lost or arrived out of order.
-          const { error: sectionCreateError } = await supabaseAdmin.from("SectionView").upsert(
-            {
-              id: uuidv4(),
-              proposalId: proposal.id,
-              sectionName,
-              firstViewedAt: new Date().toISOString(),
-              totalSeconds: delta,
-            },
-            { onConflict: "proposalId,sectionName", ignoreDuplicates: true },
-          );
-          if (sectionCreateError) throw sectionCreateError;
-        }
+        // Atomic create-or-increment — replaces a prior select-then-branch
+        // (update if a row existed, upsert-insert otherwise) that could lose
+        // an increment if two sectionTime flushes for the same section
+        // raced (e.g. the periodic heartbeat flush and a section-change
+        // flush landing back to back).
+        const { error: sectionUpdateError } = await supabaseAdmin.rpc(
+          "increment_section_view_seconds",
+          { p_proposal_id: proposal.id, p_section_name: sectionName, p_delta: delta },
+        );
+        if (sectionUpdateError) throw sectionUpdateError;
 
         break;
       }

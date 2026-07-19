@@ -39,6 +39,7 @@ model Proposal {
   signature           Signature?
   proposalView        ProposalView?
   sectionViews        SectionView[]
+  proposalVisits      ProposalVisit[]
 }
 
 model Signature {
@@ -76,4 +77,20 @@ model SectionView {
   createdAt     DateTime @default(now())
 
   @@unique([proposalId, sectionName])
+}
+
+/// One row per page load ("visit") of a client-facing proposal, so the admin
+/// can see when each individual visit happened and how long it lasted —
+/// distinct from ProposalView, which only tracks the proposal-wide
+/// aggregate (openCount/totalSeconds across every visit combined).
+model ProposalVisit {
+  id           String   @id @default(uuid()) @db.Uuid
+  proposalId   String   @db.Uuid
+  proposal     Proposal @relation(fields: [proposalId], references: [id])
+  startedAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  totalSeconds Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([proposalId])
 }

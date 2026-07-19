@@ -54,6 +54,7 @@ export async function GET(
     { data: signature, error: signatureError },
     { data: proposalView, error: viewError },
     { data: sectionViews, error: sectionsError },
+    { data: visits, error: visitsError },
   ] = await Promise.all([
     supabaseAdmin
       .from("Signature")
@@ -69,12 +70,18 @@ export async function GET(
       .from("SectionView")
       .select("sectionName, firstViewedAt, totalSeconds")
       .eq("proposalId", uuid),
+    supabaseAdmin
+      .from("ProposalVisit")
+      .select("id, startedAt, totalSeconds")
+      .eq("proposalId", uuid)
+      .order("startedAt", { ascending: false })
+      .limit(50),
   ]);
 
-  if (signatureError || viewError || sectionsError) {
+  if (signatureError || viewError || sectionsError || visitsError) {
     console.error(
       "Failed to load proposal detail:",
-      signatureError ?? viewError ?? sectionsError,
+      signatureError ?? viewError ?? sectionsError ?? visitsError,
     );
     return NextResponse.json(
       { error: "Something went wrong, please try again." },
@@ -87,6 +94,7 @@ export async function GET(
     signature: signature ?? null,
     proposalView: proposalView ?? null,
     sectionViews: sectionViews ?? [],
+    visits: visits ?? [],
   });
 }
 

@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { IconRefresh } from "@tabler/icons-react";
+import { REFRESH_EVENT } from "@/lib/ui";
 
 // The global search box that used to live here was purely decorative (never
 // wired to anything) — replaced by the real, working search in
@@ -15,26 +18,49 @@ import { useSearchParams } from "next/navigation";
 // stays in sync with ProposalsWorkspace's own client-side selection state
 // without needing to thread that state through the layout tree.
 export default function Topbar() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const isDetailView = Boolean(searchParams.get("selected"));
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  function handleRefresh() {
+    setIsRefreshing(true);
+    router.refresh();
+    // ProposalDetailPanel listens for this to reload its own client-side
+    // fetch, which router.refresh() alone doesn't reach.
+    window.dispatchEvent(new Event(REFRESH_EVENT));
+    setTimeout(() => setIsRefreshing(false), 600);
+  }
 
   return (
-    <div className="flex items-center gap-1.5 border-b border-hairline px-6 py-3 sm:px-8">
-      <Link
-        href="/admin"
-        scroll={false}
-        className={`text-sm font-medium transition-colors ${
-          isDetailView ? "text-text-muted hover:text-content-charcoal" : "text-content-charcoal"
-        }`}
+    <div className="flex items-center justify-between gap-1.5 border-b border-hairline px-6 py-3 sm:px-8">
+      <div className="flex items-center gap-1.5">
+        <Link
+          href="/admin"
+          scroll={false}
+          className={`text-sm font-medium transition-colors ${
+            isDetailView ? "text-text-muted hover:text-content-charcoal" : "text-content-charcoal"
+          }`}
+        >
+          Proposals
+        </Link>
+        {isDetailView && (
+          <>
+            <span className="text-sm text-text-muted">/</span>
+            <span className="text-sm font-medium text-content-charcoal">Details</span>
+          </>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleRefresh}
+        disabled={isRefreshing}
+        title="Refresh"
+        className="flex h-8 w-8 items-center justify-center rounded-[8px] text-text-muted transition-all hover:bg-surface-hover hover:text-content-charcoal disabled:opacity-50"
       >
-        Proposals
-      </Link>
-      {isDetailView && (
-        <>
-          <span className="text-sm text-text-muted">/</span>
-          <span className="text-sm font-medium text-content-charcoal">Details</span>
-        </>
-      )}
+        <IconRefresh size={16} stroke={1.9} className={isRefreshing ? "animate-spin" : ""} />
+      </button>
     </div>
   );
 }
