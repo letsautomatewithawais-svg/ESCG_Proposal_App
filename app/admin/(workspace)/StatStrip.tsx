@@ -70,7 +70,12 @@ function StatCard({
       <p className="mt-1.5 font-display text-xl font-bold leading-none tracking-tight tabular-nums text-content-charcoal">
         {stat.count}
       </p>
-      <div className="mt-1 h-3.5">
+      {/* min-h (not a fixed h-3.5) reserves one line's worth of space so
+          cards with no trend still align with their neighbors, but still
+          lets this grow when "vs last 30 days" wraps to a second line on
+          the narrow 2-column mobile grid — a fixed height clipped that
+          wrapped line so it visually spilled out past the card's border. */}
+      <div className="mt-1 min-h-3.5">
         <TrendLabel trendPercent={stat.trendPercent} trendRaw={stat.trendRaw} />
       </div>
     </div>
