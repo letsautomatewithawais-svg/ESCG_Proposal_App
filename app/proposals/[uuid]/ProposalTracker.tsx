@@ -39,31 +39,19 @@ function sendTrackingBeacon(proposalId: string, payload: Record<string, unknown>
   }
 }
 
-function measure(el: HTMLElement, viewportHeight: number) {
-  const rect = el.getBoundingClientRect();
-  const visibleTop = Math.max(rect.top, 0);
-  const visibleBottom = Math.min(rect.bottom, viewportHeight);
-  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-  const ratio = rect.height > 0 ? visibleHeight / rect.height : 0;
-  return { ratio };
-}
-
-// Only one section can ever be "dominant" at a time — this is what prevents
-// two overlapping-in-viewport sections from both accumulating time at once.
-// `sections` is always in reading order (top to bottom), and this returns
-// the FIRST one that's substantially visible — not whichever is closest to
-// the vertical center of the viewport. Center-proximity used to win instead,
-// which is wrong on any proposal short enough that several sections are
-// simultaneously ~100% visible with no scrolling at all: whichever section
-// happened to sit nearest center could register as "viewed" immediately on
-// page load, even a bottom section like the signature block, before the
-// user had scrolled anywhere. Reading order guarantees a section only
-// becomes dominant once every section above it has already scrolled below
-// the visibility threshold — the section the user is actually reading.
-function computeDominant(sections: TrackedSection[]): TrackedSection | null {
+// Which of `sections` (always reading order, top to bottom) is currently
+// dominant: the FIRST one whose name is in `qualifying` — not whichever is
+// closest to the vertical center of the viewport (that was wrong on a short
+// proposal where several sections are simultaneously ~100% visible with no
+// scrolling: a bottom section could win purely by geometry, before the user
+// had scrolled anywhere). Reading order guarantees a section only becomes
+// dominant once everything above it has scrolled below the threshold.
+function computeDominant(
+  sections: TrackedSection[],
+  qualifying: ReadonlySet<string>,
+): TrackedSection | null {
   for (const section of sections) {
-    const { ratio } = measure(section.el, window.innerHeight);
-    if (ratio >= DOMINANT_VISIBLE_RATIO) return section;
+    if (qualifying.has(section.name)) return section;
   }
   return null;
 }
@@ -91,6 +79,15 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
     let dominant: TrackedSection | null = null;
     let activeSince: number | null = null;
     const confirmedSections = new Set<string>();
+    // Names of sections currently at or above DOMINANT_VISIBLE_RATIO —
+    // maintained by the IntersectionObserver below, which the browser engine
+    // guarantees to notify for every threshold crossing regardless of scroll
+    // speed. The previous approach (re-measuring getBoundingClientRect() on
+    // scroll events, throttled to once per animation frame) could miss a
+    // short section entirely during a fast scroll/flick if the viewport
+    // jumped past it between two sampled frames — exactly why sections were
+    // vanishing from the timeline despite being scrolled past.
+    const qualifyingSections = new Set<string>();
 
     function isPageVisible() {
       return document.visibilityState === "visible";
@@ -152,18 +149,26 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
     }
 
     function recomputeDominant() {
-      setDominant(computeDominant(sections), Date.now());
+      setDominant(computeDominant(sections, qualifyingSections), Date.now());
     }
 
-    let scrollScheduled = false;
-    function onScrollOrResize() {
-      if (scrollScheduled) return;
-      scrollScheduled = true;
-      requestAnimationFrame(() => {
-        scrollScheduled = false;
+    const nameByElement = new Map<Element, string>(sections.map((s) => [s.el, s.name]));
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const name = nameByElement.get(entry.target);
+          if (!name) continue;
+          if (entry.intersectionRatio >= DOMINANT_VISIBLE_RATIO) {
+            qualifyingSections.add(name);
+          } else {
+            qualifyingSections.delete(name);
+          }
+        }
         recomputeDominant();
-      });
-    }
+      },
+      { threshold: [DOMINANT_VISIBLE_RATIO] },
+    );
+    for (const section of sections) intersectionObserver.observe(section.el);
 
     function sendHeartbeat() {
       sendTrackingEvent(proposalId, {
@@ -222,8 +227,6 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       startInterval();
     }
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("scroll", onScrollOrResize, { passive: true });
-    window.addEventListener("resize", onScrollOrResize);
 
     function handlePageHide() {
       const now = Date.now();
@@ -240,13 +243,10 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
 
     window.addEventListener("pagehide", handlePageHide);
 
-    recomputeDominant();
-
     return () => {
       stopInterval();
+      intersectionObserver.disconnect();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("scroll", onScrollOrResize);
-      window.removeEventListener("resize", onScrollOrResize);
       window.removeEventListener("pagehide", handlePageHide);
       flushDominant(Date.now(), false);
     };
