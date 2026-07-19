@@ -46,28 +46,27 @@ function measure(el: HTMLElement, viewportHeight: number) {
   const visibleBottom = Math.min(rect.bottom, viewportHeight);
   const visibleHeight = Math.max(0, visibleBottom - visibleTop);
   const ratio = rect.height > 0 ? visibleHeight / rect.height : 0;
-  const distanceFromCenter = Math.abs(viewportHeight / 2 - (rect.top + rect.height / 2));
-  return { ratio, distanceFromCenter };
+  return { ratio };
 }
 
 // Only one section can ever be "dominant" at a time — this is what prevents
 // two overlapping-in-viewport sections from both accumulating time at once.
-// On a tall viewport, several short sections can all be ~100% visible
-// together, so ties (and near-ties) are broken by proximity to the vertical
-// center of the viewport — a better proxy for "what's actually being read"
-// than an arbitrary first/last-wins rule.
+// `sections` is always in reading order (top to bottom), and this returns
+// the FIRST one that's substantially visible — not whichever is closest to
+// the vertical center of the viewport. Center-proximity used to win instead,
+// which is wrong on any proposal short enough that several sections are
+// simultaneously ~100% visible with no scrolling at all: whichever section
+// happened to sit nearest center could register as "viewed" immediately on
+// page load, even a bottom section like the signature block, before the
+// user had scrolled anywhere. Reading order guarantees a section only
+// becomes dominant once every section above it has already scrolled below
+// the visibility threshold — the section the user is actually reading.
 function computeDominant(sections: TrackedSection[]): TrackedSection | null {
-  let best: TrackedSection | null = null;
-  let bestDistance = Infinity;
   for (const section of sections) {
-    const { ratio, distanceFromCenter } = measure(section.el, window.innerHeight);
-    if (ratio < DOMINANT_VISIBLE_RATIO) continue;
-    if (distanceFromCenter < bestDistance) {
-      bestDistance = distanceFromCenter;
-      best = section;
-    }
+    const { ratio } = measure(section.el, window.innerHeight);
+    if (ratio >= DOMINANT_VISIBLE_RATIO) return section;
   }
-  return best;
+  return null;
 }
 
 export default function ProposalTracker({ proposalId }: { proposalId: string }) {
