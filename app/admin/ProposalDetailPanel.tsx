@@ -15,6 +15,7 @@ import {
 } from "@/lib/format";
 import { brand, REFRESH_EVENT } from "@/lib/ui";
 import StatusPill from "@/app/admin/StatusPill";
+import ConfirmDialog from "@/app/admin/ConfirmDialog";
 import {
   IconArrowLeft,
   IconCalendarEvent,
@@ -109,6 +110,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
   const [data, setData] = useState<DetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isMarkingLost, setIsMarkingLost] = useState(false);
+  const [confirmMarkAsLostOpen, setConfirmMarkAsLostOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -177,11 +179,12 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
     };
   }, [loadData]);
 
-  async function handleMarkAsLost() {
+  function requestMarkAsLost() {
     if (!data || data.proposal.status === "Lost") return;
-    const confirmed = window.confirm(`Mark the proposal for ${data.proposal.clientName} as Lost?`);
-    if (!confirmed) return;
+    setConfirmMarkAsLostOpen(true);
+  }
 
+  async function performMarkAsLost() {
     setIsMarkingLost(true);
     setActionError(null);
     try {
@@ -202,6 +205,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
       setActionError("Something went wrong, please try again.");
     } finally {
       setIsMarkingLost(false);
+      setConfirmMarkAsLostOpen(false);
     }
   }
 
@@ -297,7 +301,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
                 type="button"
                 variant="secondary"
                 size="sm"
-                onClick={handleMarkAsLost}
+                onClick={requestMarkAsLost}
                 disabled={isMarkingLost}
                 className={secondaryButtonClass}
               >
@@ -560,6 +564,16 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmMarkAsLostOpen}
+        title="Mark as Lost?"
+        description={`Mark the proposal for ${proposal.clientName} as Lost?`}
+        confirmLabel="Mark as Lost"
+        isBusy={isMarkingLost}
+        onConfirm={performMarkAsLost}
+        onCancel={() => setConfirmMarkAsLostOpen(false)}
+      />
     </div>
   );
 }

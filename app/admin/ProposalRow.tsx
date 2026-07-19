@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { IconCheck, IconDotsVertical, IconLink } from "@tabler/icons-react";
 import StatusPill, { statusVisual } from "./StatusPill";
+import ConfirmDialog from "./ConfirmDialog";
 import { brand } from "@/lib/ui";
 import {
   formatCurrencyAUD,
@@ -52,6 +53,7 @@ export default function ProposalRow({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionWarning, setActionWarning] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"lost" | "delete" | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const hasActivity = new Date(updatedAt).getTime() - new Date(createdAt).getTime() > 2000;
   // "X hours ago" depends on the current moment, which differs between the
@@ -139,11 +141,12 @@ export default function ProposalRow({
     }
   }
 
-  async function handleMarkAsLost() {
+  function requestMarkAsLost() {
     if (currentStatus === "Lost") return;
-    const confirmed = window.confirm(`Mark the proposal for ${clientName} as Lost?`);
-    if (!confirmed) return;
+    setPendingAction("lost");
+  }
 
+  async function performMarkAsLost() {
     setIsMarkingLost(true);
     setActionError(null);
     try {
@@ -165,15 +168,15 @@ export default function ProposalRow({
       setActionError("Something went wrong, please try again.");
     } finally {
       setIsMarkingLost(false);
+      setPendingAction(null);
     }
   }
 
-  async function handleDelete() {
-    const confirmed = window.confirm(
-      `Permanently delete the proposal for ${clientName}? This cannot be undone.`,
-    );
-    if (!confirmed) return;
+  function requestDelete() {
+    setPendingAction("delete");
+  }
 
+  async function performDelete() {
     setIsDeleting(true);
     setActionError(null);
     try {
@@ -182,6 +185,7 @@ export default function ProposalRow({
       if (!res.ok) {
         setActionError("Something went wrong, please try again.");
         setIsDeleting(false);
+        setPendingAction(null);
         return;
       }
 
@@ -189,7 +193,13 @@ export default function ProposalRow({
     } catch {
       setActionError("Something went wrong, please try again.");
       setIsDeleting(false);
+      setPendingAction(null);
     }
+  }
+
+  function handleConfirmPendingAction() {
+    if (pendingAction === "lost") performMarkAsLost();
+    if (pendingAction === "delete") performDelete();
   }
 
   const visual = statusVisual(currentStatus);
@@ -281,7 +291,7 @@ export default function ProposalRow({
                 <div className={`absolute right-0 z-10 mt-1.5 w-44 overflow-hidden py-1 ${brand.floating}`}>
                   <button
                     type="button"
-                    onClick={handleMarkAsLost}
+                    onClick={requestMarkAsLost}
                     disabled={isMarkingLost || currentStatus === "Lost"}
                     className="block w-full px-3 py-2 text-left text-sm text-content-charcoal transition-colors hover:bg-content-charcoal/[0.05] disabled:cursor-not-allowed disabled:opacity-40"
                   >
@@ -309,7 +319,7 @@ export default function ProposalRow({
                   <div className="my-1 border-t border-hairline" />
                   <button
                     type="button"
-                    onClick={handleDelete}
+                    onClick={requestDelete}
                     disabled={isDeleting}
                     className="block w-full px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                   >
@@ -328,6 +338,21 @@ export default function ProposalRow({
           {actionWarning && <p className="text-xs text-amber-700">{actionWarning}</p>}
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title={pendingAction === "delete" ? "Delete proposal?" : "Mark as Lost?"}
+        description={
+          pendingAction === "delete"
+            ? `Permanently delete the proposal for ${clientName}? This cannot be undone.`
+            : `Mark the proposal for ${clientName} as Lost?`
+        }
+        confirmLabel={pendingAction === "delete" ? "Delete" : "Mark as Lost"}
+        destructive={pendingAction === "delete"}
+        isBusy={isMarkingLost || isDeleting}
+        onConfirm={handleConfirmPendingAction}
+        onCancel={() => setPendingAction(null)}
+      />
     </div>
   );
 }

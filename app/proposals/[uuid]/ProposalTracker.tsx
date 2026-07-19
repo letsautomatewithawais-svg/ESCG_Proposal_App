@@ -210,6 +210,19 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
         resumeTiming(now);
       } else {
         stopInterval();
+        // Going hidden mid-interval (switching tabs/apps — the most common
+        // way a session ends) used to flush the dominant section's dwell
+        // time here without ever crediting that same leftover window to the
+        // page-wide total (only handlePageHide did that, and pagehide
+        // doesn't fire on every tab switch). That asymmetry is exactly why
+        // per-section times could sum to more than "Total Time on Page" —
+        // sections got credited for time the total never counted. Mirror
+        // handlePageHide's partial-heartbeat flush here too.
+        const elapsedSeconds = (now - lastHeartbeatAt) / 1000;
+        if (elapsedSeconds >= MIN_REPORTABLE_SECONDS) {
+          sendTrackingEvent(proposalId, { event: "heartbeat", intervalSeconds: elapsedSeconds, visitId });
+        }
+        lastHeartbeatAt = now;
         flushDominant(now, false);
       }
     }
