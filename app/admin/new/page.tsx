@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconCheck, IconX } from "@tabler/icons-react";
-import { Button } from "../../components/Button";
+import { Button, buttonClasses } from "../../components/Button";
 import { brand } from "@/lib/ui";
 
 type SendMode = "send_now" | "save_draft" | "";
@@ -376,7 +376,7 @@ export default function NewProposalPage() {
             >
               Create another
             </Button>
-            <Link href="/admin" className="text-sm font-medium text-text-muted hover:text-content-charcoal">
+            <Link href="/admin" className={buttonClasses("secondary", "md", secondaryButtonClass)}>
               Back to Proposals
             </Link>
           </div>
