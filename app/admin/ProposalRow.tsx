@@ -195,7 +195,7 @@ export default function ProposalRow({
     <div className="border-b border-hairline last:border-0">
       <div
         onClick={goToDetail}
-        className="flex cursor-pointer items-center gap-3 px-5 py-2.5 transition-all hover:bg-surface-hover hover:shadow-[inset_3px_0_0_0_var(--color-brand-primary)]"
+        className="flex cursor-pointer flex-col gap-2 px-5 py-3 transition-all hover:bg-surface-hover hover:shadow-[inset_3px_0_0_0_var(--color-brand-primary)] sm:flex-row sm:items-center sm:gap-3 sm:py-2.5"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <div className={`${brand.iconChip} h-7 w-7 shrink-0 rounded-[7px] ${visual.chipClassName}`}>
@@ -214,97 +214,106 @@ export default function ProposalRow({
           </div>
         </div>
 
-        <div className="hidden w-36 shrink-0 truncate text-xs text-text-muted md:block">
-          {companyName}
-        </div>
+        {/* Below `sm`, this becomes a real flex row (a second line under the
+            name, since the row above switches to flex-col) so Status/Value/
+            actions don't have to share one line with the name — that's what
+            was overflowing the viewport on phones. At `sm` and up it's
+            `contents`, so it un-boxes and every child below rejoins the
+            outer row's flex layout in the same DOM order as before —
+            pixel-identical to the original single-line desktop row. */}
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:contents">
+          <div className="hidden w-36 shrink-0 truncate text-xs text-text-muted md:block">
+            {companyName}
+          </div>
 
-        <div className="w-24 shrink-0">
-          <StatusPill status={currentStatus} />
-        </div>
+          <div className="shrink-0 sm:w-24">
+            <StatusPill status={currentStatus} />
+          </div>
 
-        <div className="w-24 shrink-0 text-right font-ticket-mono text-xs tabular-nums text-content-charcoal">
-          {formatCurrencyAUD(totalMonthlyInclGst)}
-        </div>
+          <div className="shrink-0 text-right font-ticket-mono text-xs tabular-nums text-content-charcoal sm:w-24">
+            {formatCurrencyAUD(totalMonthlyInclGst)}
+          </div>
 
-        <div className="hidden w-28 shrink-0 truncate text-xs text-text-muted md:block">
-          {lastActivityDisplay}
-        </div>
+          <div className="hidden w-28 shrink-0 truncate text-xs text-text-muted md:block">
+            {lastActivityDisplay}
+          </div>
 
-        <div className="hidden w-16 shrink-0 text-xs tabular-nums text-text-muted sm:block">
-          {openCount > 0 ? openCount : "—"}
-        </div>
+          <div className="hidden w-16 shrink-0 text-xs tabular-nums text-text-muted sm:block">
+            {openCount > 0 ? openCount : "—"}
+          </div>
 
-        <div className="hidden w-24 shrink-0 text-xs tabular-nums text-text-muted lg:block">
-          {totalSeconds !== null ? formatDurationSeconds(totalSeconds) : "—"}
-        </div>
+          <div className="hidden w-24 shrink-0 text-xs tabular-nums text-text-muted lg:block">
+            {totalSeconds !== null ? formatDurationSeconds(totalSeconds) : "—"}
+          </div>
 
-        <div
-          className="flex w-[72px] shrink-0 items-center justify-end gap-0.5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            title="Copy client link"
-            className="rounded-[8px] p-2 text-text-muted transition-all hover:bg-content-charcoal/[0.06] hover:text-content-charcoal active:scale-90"
+          <div
+            className="flex w-[72px] shrink-0 items-center justify-end gap-0.5"
+            onClick={(e) => e.stopPropagation()}
           >
-            {copied ? (
-              <IconCheck size={16} stroke={2.25} className="text-brand-green" />
-            ) : (
-              <IconLink size={16} stroke={1.75} />
-            )}
-          </button>
-
-          <div className="relative" ref={menuRef}>
             <button
               type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              title="More actions"
+              onClick={handleCopyLink}
+              title="Copy client link"
               className="rounded-[8px] p-2 text-text-muted transition-all hover:bg-content-charcoal/[0.06] hover:text-content-charcoal active:scale-90"
             >
-              <IconDotsVertical size={16} stroke={1.75} />
+              {copied ? (
+                <IconCheck size={16} stroke={2.25} className="text-brand-green" />
+              ) : (
+                <IconLink size={16} stroke={1.75} />
+              )}
             </button>
 
-            {menuOpen && (
-              <div className={`absolute right-0 z-10 mt-1.5 w-44 overflow-hidden py-1 ${brand.floating}`}>
-                <button
-                  type="button"
-                  onClick={handleMarkAsLost}
-                  disabled={isMarkingLost || currentStatus === "Lost"}
-                  className="block w-full px-3 py-2 text-left text-sm text-content-charcoal transition-colors hover:bg-content-charcoal/[0.05] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {isMarkingLost ? "Marking…" : "Mark as Lost"}
-                </button>
-                {currentStatus === "Draft" ? (
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((open) => !open)}
+                title="More actions"
+                className="rounded-[8px] p-2 text-text-muted transition-all hover:bg-content-charcoal/[0.06] hover:text-content-charcoal active:scale-90"
+              >
+                <IconDotsVertical size={16} stroke={1.75} />
+              </button>
+
+              {menuOpen && (
+                <div className={`absolute right-0 z-10 mt-1.5 w-44 overflow-hidden py-1 ${brand.floating}`}>
                   <button
                     type="button"
-                    onClick={handleSendProposal}
-                    disabled={isSending}
+                    onClick={handleMarkAsLost}
+                    disabled={isMarkingLost || currentStatus === "Lost"}
                     className="block w-full px-3 py-2 text-left text-sm text-content-charcoal transition-colors hover:bg-content-charcoal/[0.05] disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    {isSending ? "Sending…" : "Send Proposal"}
+                    {isMarkingLost ? "Marking…" : "Mark as Lost"}
                   </button>
-                ) : (
+                  {currentStatus === "Draft" ? (
+                    <button
+                      type="button"
+                      onClick={handleSendProposal}
+                      disabled={isSending}
+                      className="block w-full px-3 py-2 text-left text-sm text-content-charcoal transition-colors hover:bg-content-charcoal/[0.05] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {isSending ? "Sending…" : "Send Proposal"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      title="Coming soon"
+                      className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-text-disabled"
+                    >
+                      Resend Email
+                    </button>
+                  )}
+                  <div className="my-1 border-t border-hairline" />
                   <button
                     type="button"
-                    disabled
-                    title="Coming soon"
-                    className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-text-disabled"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="block w-full px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Resend Email
+                    {isDeleting ? "Deleting…" : "Delete"}
                   </button>
-                )}
-                <div className="my-1 border-t border-hairline" />
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="block w-full px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {isDeleting ? "Deleting…" : "Delete"}
-                </button>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

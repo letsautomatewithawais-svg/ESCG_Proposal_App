@@ -194,7 +194,7 @@ export default function ProposalsTable({ proposals }: { proposals: TableProposal
         </div>
 
         {sorted.length > 0 && (
-          <div className="flex items-center gap-4 border-b border-hairline bg-neutral-tint/40 px-5 py-2">
+          <div className="hidden items-center gap-4 border-b border-hairline bg-neutral-tint/40 px-5 py-2 sm:flex">
             <span className={`${brand.label} min-w-0 flex-1`}>Proposal</span>
             <span className={`${brand.label} hidden w-36 shrink-0 md:block`}>Client</span>
             <span className={`${brand.label} w-24 shrink-0`}>Status</span>

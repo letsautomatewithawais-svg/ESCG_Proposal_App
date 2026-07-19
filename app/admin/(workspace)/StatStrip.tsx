@@ -55,7 +55,7 @@ function StatCard({
   return (
     <div className={`${brand.card} flex flex-col p-3.5`}>
       <div className="flex items-start justify-between gap-2">
-        <p className={`${brand.label} whitespace-nowrap`}>{label}</p>
+        <p className={`${brand.label} lg:whitespace-nowrap`}>{label}</p>
         {Icon && (
           <div className={`${brand.iconChip} h-6 w-6 ${chipClassName}`}>
             <Icon size={12} stroke={2} className={iconClassName} />
