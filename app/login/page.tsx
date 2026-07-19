@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ComponentType } from "react";
-import { IconEye, IconEyeOff, IconLock, IconRosetteDiscountCheck, IconSend } from "@tabler/icons-react";
+import { IconEye, IconEyeOff, IconLock } from "@tabler/icons-react";
 import { Button } from "../components/Button";
 
 // Admin-only color override on the shared Button component (matches the
@@ -12,25 +11,12 @@ import { Button } from "../components/Button";
 const primaryButtonClass =
   "rounded-[8px]! bg-brand-primary! text-white! hover:bg-brand-primary/90! focus-visible:ring-brand-primary!";
 
-type FeatureIcon = ComponentType<{ size?: number; stroke?: number; className?: string }>;
-
-const FEATURES: { icon: FeatureIcon; title: string; description: string }[] = [
-  {
-    icon: IconSend,
-    title: "One link, always current",
-    description: "Share a single trackable link instead of an email attachment or a static PDF.",
-  },
-  {
-    icon: IconEye,
-    title: "Real-time engagement",
-    description: "See exactly when a proposal is opened, which sections are read, and for how long.",
-  },
-  {
-    icon: IconRosetteDiscountCheck,
-    title: "Built-in e-signature",
-    description: "Clients review, accept, and sign without ever leaving the page.",
-  },
-];
+// A fine dot grid instead of soft glow blobs — texture that reads as a
+// restrained internal console rather than a startup marketing page.
+const DOT_GRID_STYLE = {
+  backgroundImage: "radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1px)",
+  backgroundSize: "24px 24px",
+};
 
 function BrandMark({ tone }: { tone: "light" | "dark" }) {
   return (
@@ -96,48 +82,32 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel — hidden below lg so mobile stays a plain, uncluttered
-          form (a marketing panel has nowhere useful to go on a narrow
-          screen); on wider viewports it's what actually uses the space a
-          lone centered card used to leave empty. */}
+          form (this has nowhere useful to go on a narrow screen); on wider
+          viewports it's what actually uses the space a lone centered card
+          used to leave empty. No marketing copy or feature pitch here —
+          there's no external audience for this login, only staff who
+          already know what the tool does, so the panel just states what
+          this is and who it's restricted to. */}
       <div className="relative hidden overflow-hidden bg-brand-primary lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-black/10 blur-3xl"
-        />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-40" style={DOT_GRID_STYLE} />
 
         <div className="relative">
           <BrandMark tone="dark" />
         </div>
 
-        <div className="relative max-w-md">
-          <h2 className="font-display text-3xl font-bold leading-tight tracking-tight text-white xl:text-4xl">
-            Proposals that track themselves.
-          </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-white/70">
-            Manage cleaning service proposals from draft to signed, with visibility into how every
-            client actually engages with what you send them.
+        <div className="relative max-w-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+            Internal Tool
           </p>
-
-          <div className="mt-10 space-y-6">
-            {FEATURES.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="flex items-start gap-3.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
-                  <Icon size={17} stroke={1.9} className="text-white" />
-                </span>
-                <div className="min-w-0 pt-0.5">
-                  <p className="text-sm font-semibold text-white">{title}</p>
-                  <p className="mt-0.5 text-sm leading-snug text-white/65">{description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <h2 className="mt-3 font-display text-2xl font-bold leading-tight tracking-tight text-white xl:text-3xl">
+            Proposal Management Console
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-white/65">
+            Create, send, and track client proposals from a single admin workspace.
+          </p>
         </div>
 
-        <p className="relative text-xs text-white/45">Internal proposal management tool</p>
+        <p className="relative text-xs text-white/45">Restricted access — authorized ESCG staff only.</p>
       </div>
 
       {/* Form panel */}
