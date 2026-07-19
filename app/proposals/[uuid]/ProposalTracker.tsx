@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 
 const HEARTBEAT_INTERVAL_SECONDS = 15;
-const SECTION_DWELL_MS = 1500;
 const MIN_REPORTABLE_SECONDS = 1;
 // A section must occupy at least this much of its own height within the
 // viewport to count as "being read" — below this, no section is credited.
@@ -88,11 +87,8 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
     let intervalId: ReturnType<typeof setInterval> | null = null;
     let lastHeartbeatAt = Date.now();
 
-    // The single section currently being timed (confirmed, i.e. past its
-    // initial dwell), and the candidate awaiting dwell confirmation.
+    // The single section currently accumulating time.
     let dominant: TrackedSection | null = null;
-    let pendingCandidate: TrackedSection | null = null;
-    let dwellTimer: ReturnType<typeof setTimeout> | null = null;
     let activeSince: number | null = null;
     const confirmedSections = new Set<string>();
 
@@ -100,14 +96,39 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       return document.visibilityState === "visible";
     }
 
+    // A section used to only start accumulating time after sitting dominant
+    // for a fixed 1.5s "dwell" delay, confirmed via a separate timer — while
+    // waiting on that timer, the section switch hadn't happened yet, so
+    // whatever was PREVIOUSLY dominant just kept absorbing time. Scroll
+    // steadily through two sections without pausing long enough on either to
+    // complete its dwell timer, and both effectively vanish: their time gets
+    // misattributed to whatever section was dominant before the scroll, and
+    // neither ever gets marked "viewed" at all. Switching dominance
+    // immediately (no delay) fixes both: every moment is credited to
+    // whichever section is actually on screen, and "viewed" is now just
+    // "accumulated a reportable stretch of time" — the same
+    // MIN_REPORTABLE_SECONDS bar flushDominant already applies below, not a
+    // separate concept that can drift out of sync with it.
     function flushDominant(now: number, useBeacon: boolean) {
       if (activeSince === null || dominant === null) return;
       const elapsedSeconds = (now - activeSince) / 1000;
+      const section = dominant;
       activeSince = null;
       if (elapsedSeconds < MIN_REPORTABLE_SECONDS) return;
+
+      if (!confirmedSections.has(section.name)) {
+        confirmedSections.add(section.name);
+        const confirmPayload = { event: "section", sectionName: section.name };
+        if (useBeacon) {
+          sendTrackingBeacon(proposalId, confirmPayload);
+        } else {
+          sendTrackingEvent(proposalId, confirmPayload);
+        }
+      }
+
       const payload = {
         event: "sectionTime",
-        sectionName: dominant.name,
+        sectionName: section.name,
         intervalSeconds: elapsedSeconds,
       };
       if (useBeacon) {
@@ -130,37 +151,8 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       resumeTiming(now);
     }
 
-    function handleCandidateChange(candidate: TrackedSection | null) {
-      if (candidate?.el === pendingCandidate?.el) return;
-
-      if (dwellTimer !== null) {
-        clearTimeout(dwellTimer);
-        dwellTimer = null;
-      }
-      pendingCandidate = candidate;
-
-      if (candidate === null) {
-        setDominant(null, Date.now());
-        return;
-      }
-
-      if (confirmedSections.has(candidate.name)) {
-        // Already confirmed on an earlier pass (user scrolled back) — resume
-        // timing immediately, no need to re-dwell.
-        setDominant(candidate, Date.now());
-        return;
-      }
-
-      dwellTimer = setTimeout(() => {
-        dwellTimer = null;
-        confirmedSections.add(candidate.name);
-        sendTrackingEvent(proposalId, { event: "section", sectionName: candidate.name });
-        setDominant(candidate, Date.now());
-      }, SECTION_DWELL_MS);
-    }
-
     function recomputeDominant() {
-      handleCandidateChange(computeDominant(sections));
+      setDominant(computeDominant(sections), Date.now());
     }
 
     let scrollScheduled = false;
@@ -256,7 +248,6 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       window.removeEventListener("scroll", onScrollOrResize);
       window.removeEventListener("resize", onScrollOrResize);
       window.removeEventListener("pagehide", handlePageHide);
-      if (dwellTimer !== null) clearTimeout(dwellTimer);
       flushDominant(Date.now(), false);
     };
   }, [proposalId]);
