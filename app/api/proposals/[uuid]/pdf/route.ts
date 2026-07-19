@@ -102,7 +102,14 @@ export async function GET(
     });
   } catch (err) {
     console.error("PDF export failed:", err);
-    return NextResponse.json({ error: "Failed to generate PDF." }, { status: 500 });
+    // TEMPORARY: surfacing the real error message to diagnose the
+    // production-only failure without Vercel dashboard log access. Revert
+    // to a generic message once this is resolved — this endpoint has no
+    // auth check, so exposing internals here isn't something to leave in.
+    return NextResponse.json(
+      { error: "Failed to generate PDF.", detail: err instanceof Error ? err.message : String(err) },
+      { status: 500 },
+    );
   } finally {
     await browser?.close();
   }
