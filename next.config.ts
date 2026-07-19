@@ -13,6 +13,17 @@ const nextConfig: NextConfig = {
   // marking them external skips bundling and lets them run as plain
   // node_modules requires, the way they're designed to.
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  // serverExternalPackages keeps @sparticuz/chromium from being bundled,
+  // but Next's output file tracing still didn't pick up its "bin/" folder
+  // (the compressed Chromium binary lives there, not behind a require()
+  // Next's tracer can see) — the deployed function crashed with "The input
+  // directory .../bin does not exist" per the package's own bundler
+  // guidance: https://github.com/Sparticuz/chromium#bundler-configuration.
+  // Force it into every /api/** function's trace so the PDF route actually
+  // has it on disk at runtime.
+  outputFileTracingIncludes: {
+    "/api/**": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+  },
 };
 
 export default nextConfig;
