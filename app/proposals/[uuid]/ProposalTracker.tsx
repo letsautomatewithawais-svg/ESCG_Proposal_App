@@ -152,13 +152,39 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
       setDominant(computeDominant(sections, qualifyingSections), Date.now());
     }
 
+    // IntersectionObserver's own intersectionRatio is always (visible area)
+    // / (the element's OWN full height) — never relative to the viewport.
+    // That's fine for a section shorter than the screen, but a section
+    // TALLER than the viewport (or just a short viewport — a laptop screen,
+    // a zoomed-in browser) can fill the entire visible screen and still
+    // never reach 50% of its own full height, since that height exceeds the
+    // viewport. It can structurally never cross a target-relative threshold
+    // no matter how long it's looked at — which is exactly why a large
+    // section like Pricing could register zero time. Compute visibility
+    // relative to whichever is SMALLER, the element or the viewport, so a
+    // section counts as dominant once it fills the viewport either way.
+    function isViewportFilling(entry: IntersectionObserverEntry): boolean {
+      const elementHeight = entry.boundingClientRect.height;
+      const viewportHeight = entry.rootBounds?.height ?? window.innerHeight;
+      const denominator = Math.min(elementHeight, viewportHeight);
+      if (denominator <= 0) return false;
+      return entry.intersectionRect.height / denominator >= DOMINANT_VISIBLE_RATIO;
+    }
+
+    // A broad, fine-grained threshold list — not just [0.5] — so the
+    // observer's callback (gated on ITS OWN target-relative ratio) fires
+    // often enough during a scroll to keep re-evaluating isViewportFilling
+    // above, even for a tall section whose own-height ratio never reaches
+    // 0.5 at all.
+    const OBSERVER_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
+
     const nameByElement = new Map<Element, string>(sections.map((s) => [s.el, s.name]));
     const intersectionObserver = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           const name = nameByElement.get(entry.target);
           if (!name) continue;
-          if (entry.intersectionRatio >= DOMINANT_VISIBLE_RATIO) {
+          if (isViewportFilling(entry)) {
             qualifyingSections.add(name);
           } else {
             qualifyingSections.delete(name);
@@ -166,7 +192,7 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
         }
         recomputeDominant();
       },
-      { threshold: [DOMINANT_VISIBLE_RATIO] },
+      { threshold: OBSERVER_THRESHOLDS },
     );
     for (const section of sections) intersectionObserver.observe(section.el);
 
