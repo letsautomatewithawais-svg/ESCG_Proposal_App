@@ -53,6 +53,16 @@ const CURRENCY_PATTERN = /^\d+(\.\d{1,2})?$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GST_MULTIPLIER = 1.1;
 
+// Some people naturally type thousands separators into a dollar amount
+// (e.g. "25,000.23") — stripping commas before validating/parsing means
+// that's accepted instead of either silently miscalculating the live
+// GST-inclusive total (parseFloat stops at the first comma, so
+// "25,000.23" was read as just "25") or blocking submission on a
+// "not a valid amount" error most people wouldn't expect for that input.
+function parseCurrencyInput(value: string): string {
+  return value.replace(/,/g, "").trim();
+}
+
 // Maps the API's field names (which mirror the Prisma model) back to this form's state keys.
 const SERVER_TO_FORM_FIELD: Record<string, keyof FormState> = {
   walkThroughDate: "walkthroughDate",
@@ -104,13 +114,13 @@ function validate(data: FormState): FormErrors {
 
   if (!data.pricePerVisit.trim()) {
     errors.pricePerVisit = "Price per visit is required.";
-  } else if (!CURRENCY_PATTERN.test(data.pricePerVisit.trim())) {
+  } else if (!CURRENCY_PATTERN.test(parseCurrencyInput(data.pricePerVisit))) {
     errors.pricePerVisit = "Enter a valid amount, e.g. 120 or 120.50.";
   }
 
   if (!data.monthlyCostExclGst.trim()) {
     errors.monthlyCostExclGst = "Monthly cost is required.";
-  } else if (!CURRENCY_PATTERN.test(data.monthlyCostExclGst.trim())) {
+  } else if (!CURRENCY_PATTERN.test(parseCurrencyInput(data.monthlyCostExclGst))) {
     errors.monthlyCostExclGst = "Enter a valid amount, e.g. 480 or 480.50.";
   }
 
@@ -176,7 +186,7 @@ export default function NewProposalPage() {
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const monthlyCostNum = parseFloat(form.monthlyCostExclGst);
+  const monthlyCostNum = parseFloat(parseCurrencyInput(form.monthlyCostExclGst));
   const totalInclGstDisplay = useMemo(() => {
     if (!Number.isFinite(monthlyCostNum) || form.monthlyCostExclGst.trim() === "") {
       return "";
@@ -243,8 +253,8 @@ export default function NewProposalPage() {
           clientEmail: form.clientEmail.trim(),
           frequencyOfService: form.frequencyOfService,
           scopeOfWork: form.scopeOfWork.trim(),
-          pricePerVisit: Number(form.pricePerVisit),
-          monthlyCostExclGst: Number(form.monthlyCostExclGst),
+          pricePerVisit: Number(parseCurrencyInput(form.pricePerVisit)),
+          monthlyCostExclGst: Number(parseCurrencyInput(form.monthlyCostExclGst)),
           acquisitionMethod: form.clientAcquisitionMethod,
           sendMode: form.sendMode,
         }),
