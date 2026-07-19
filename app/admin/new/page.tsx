@@ -376,7 +376,7 @@ export default function NewProposalPage() {
             >
               Create another
             </Button>
-            <Link href="/admin" className={buttonClasses("secondary", "md", secondaryButtonClass)}>
+            <Link href="/admin" className={buttonClasses("primary", "md", primaryButtonClass)}>
               Back to Proposals
             </Link>
           </div>
