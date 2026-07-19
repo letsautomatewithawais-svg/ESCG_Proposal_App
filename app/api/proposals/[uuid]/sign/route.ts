@@ -82,6 +82,22 @@ export async function POST(
     });
     if (signatureError) throw signatureError;
 
+    // A completed signature is unambiguous proof the Signature Block section
+    // was seen and interacted with — guarantee it's recorded as viewed
+    // regardless of whatever the client-side scroll/visibility tracking did
+    // or didn't manage to detect. ignoreDuplicates means this is a no-op if
+    // that tracking already recorded it (doesn't touch its real totalSeconds).
+    const { error: sectionViewError } = await supabaseAdmin.from("SectionView").upsert(
+      {
+        id: uuidv4(),
+        proposalId: proposal.id,
+        sectionName: "Signature Block",
+        firstViewedAt: signedAt.toISOString(),
+      },
+      { onConflict: "proposalId,sectionName", ignoreDuplicates: true },
+    );
+    if (sectionViewError) throw sectionViewError;
+
     const { error: updateError } = await supabaseAdmin
       .from("Proposal")
       .update({ status: "Signed", updatedAt: new Date().toISOString() })

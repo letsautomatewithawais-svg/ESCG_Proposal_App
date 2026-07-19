@@ -40,20 +40,33 @@ function sendTrackingBeacon(proposalId: string, payload: Record<string, unknown>
 }
 
 // Which of `sections` (always reading order, top to bottom) is currently
-// dominant: the FIRST one whose name is in `qualifying` — not whichever is
-// closest to the vertical center of the viewport (that was wrong on a short
-// proposal where several sections are simultaneously ~100% visible with no
-// scrolling: a bottom section could win purely by geometry, before the user
-// had scrolled anywhere). Reading order guarantees a section only becomes
-// dominant once everything above it has scrolled below the threshold.
+// dominant: whichever qualifying section has the HIGHEST viewport-filling
+// ratio right now — not whichever is closest to the vertical center (wrong:
+// picked the wrong section by raw geometry on a short page), and not simply
+// "first qualifying one in reading order" either (also wrong: two adjacent
+// sections are frequently simultaneously ≥50% visible at once — e.g. Terms
+// and the Signature Block near the bottom of the page — and "first in
+// reading order" would let the earlier one block the later one from ever
+// becoming dominant for as long as both stayed visible together, even while
+// the user was actively signing inside the later one). Strict `>` (not
+// `>=`) means reading order only breaks a genuine tie — e.g. every section
+// simultaneously ~100% visible on a short page with no scrolling at all —
+// while a section that's clearly MORE prominent right now always wins.
 function computeDominant(
   sections: TrackedSection[],
-  qualifying: ReadonlySet<string>,
+  ratios: ReadonlyMap<string, number>,
 ): TrackedSection | null {
+  let best: TrackedSection | null = null;
+  let bestRatio = 0;
   for (const section of sections) {
-    if (qualifying.has(section.name)) return section;
+    const ratio = ratios.get(section.name) ?? 0;
+    if (ratio < DOMINANT_VISIBLE_RATIO) continue;
+    if (ratio > bestRatio) {
+      bestRatio = ratio;
+      best = section;
+    }
   }
-  return null;
+  return best;
 }
 
 export default function ProposalTracker({ proposalId }: { proposalId: string }) {
@@ -79,15 +92,14 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
     let dominant: TrackedSection | null = null;
     let activeSince: number | null = null;
     const confirmedSections = new Set<string>();
-    // Names of sections currently at or above DOMINANT_VISIBLE_RATIO —
-    // maintained by the IntersectionObserver below, which the browser engine
-    // guarantees to notify for every threshold crossing regardless of scroll
-    // speed. The previous approach (re-measuring getBoundingClientRect() on
-    // scroll events, throttled to once per animation frame) could miss a
-    // short section entirely during a fast scroll/flick if the viewport
-    // jumped past it between two sampled frames — exactly why sections were
-    // vanishing from the timeline despite being scrolled past.
-    const qualifyingSections = new Set<string>();
+    // Each section's current viewport-filling ratio — maintained by the
+    // IntersectionObserver below, which the browser engine guarantees to
+    // notify for every threshold crossing regardless of scroll speed. The
+    // previous approach (re-measuring getBoundingClientRect() on scroll
+    // events, throttled to once per animation frame) could miss a short
+    // section entirely during a fast scroll/flick if the viewport jumped
+    // past it between two sampled frames.
+    const sectionRatios = new Map<string, number>();
 
     function isPageVisible() {
       return document.visibilityState === "visible";
@@ -149,7 +161,7 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
     }
 
     function recomputeDominant() {
-      setDominant(computeDominant(sections, qualifyingSections), Date.now());
+      setDominant(computeDominant(sections, sectionRatios), Date.now());
     }
 
     // IntersectionObserver's own intersectionRatio is always (visible area)
@@ -162,18 +174,18 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
     // no matter how long it's looked at — which is exactly why a large
     // section like Pricing could register zero time. Compute visibility
     // relative to whichever is SMALLER, the element or the viewport, so a
-    // section counts as dominant once it fills the viewport either way.
-    function isViewportFilling(entry: IntersectionObserverEntry): boolean {
+    // section's ratio can reach 1.0 once it fills the viewport either way.
+    function viewportFillRatio(entry: IntersectionObserverEntry): number {
       const elementHeight = entry.boundingClientRect.height;
       const viewportHeight = entry.rootBounds?.height ?? window.innerHeight;
       const denominator = Math.min(elementHeight, viewportHeight);
-      if (denominator <= 0) return false;
-      return entry.intersectionRect.height / denominator >= DOMINANT_VISIBLE_RATIO;
+      if (denominator <= 0) return 0;
+      return entry.intersectionRect.height / denominator;
     }
 
     // A broad, fine-grained threshold list — not just [0.5] — so the
     // observer's callback (gated on ITS OWN target-relative ratio) fires
-    // often enough during a scroll to keep re-evaluating isViewportFilling
+    // often enough during a scroll to keep re-evaluating viewportFillRatio
     // above, even for a tall section whose own-height ratio never reaches
     // 0.5 at all.
     const OBSERVER_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
@@ -184,11 +196,7 @@ export default function ProposalTracker({ proposalId }: { proposalId: string }) 
         for (const entry of entries) {
           const name = nameByElement.get(entry.target);
           if (!name) continue;
-          if (isViewportFilling(entry)) {
-            qualifyingSections.add(name);
-          } else {
-            qualifyingSections.delete(name);
-          }
+          sectionRatios.set(name, viewportFillRatio(entry));
         }
         recomputeDominant();
       },
