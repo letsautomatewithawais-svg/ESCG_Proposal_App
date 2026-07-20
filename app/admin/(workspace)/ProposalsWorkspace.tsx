@@ -63,7 +63,7 @@ export default function ProposalsWorkspace({
 
   if (selectedId) {
     return (
-      <div className="bg-surface-off p-4">
+      <div className="bg-surface-off p-2 sm:p-4">
         <ProposalDetailPanel key={selectedId} proposalId={selectedId} />
       </div>
     );

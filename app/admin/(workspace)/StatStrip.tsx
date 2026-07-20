@@ -45,15 +45,17 @@ function StatCard({
   icon: Icon,
   chipClassName,
   iconClassName,
+  className = "",
 }: {
   label: string;
   stat: StatSummary;
   icon?: StatIconType;
   chipClassName?: string;
   iconClassName?: string;
+  className?: string;
 }) {
   return (
-    <div className={`${brand.card} flex flex-col p-3.5`}>
+    <div className={`${brand.card} flex flex-col p-3.5 ${className}`}>
       <div className="flex items-start justify-between gap-2">
         <p className={`${brand.label} lg:whitespace-nowrap`}>{label}</p>
         {Icon && (
@@ -150,6 +152,11 @@ export default function StatStrip({ total, sent, opened, signed, lost, lastActiv
           icon={IconX}
           chipClassName="bg-red-tint"
           iconClassName="text-red"
+          // 5 cards in a 2-column mobile grid leaves this last one stranded
+          // alone in its own half-empty row — give it the full row instead
+          // of an orphaned half-width slot. Unaffected at `lg` where the
+          // grid is already 5 columns wide (col-span-1 there is a no-op).
+          className="col-span-2 lg:col-span-1"
         />
       </div>
     </div>

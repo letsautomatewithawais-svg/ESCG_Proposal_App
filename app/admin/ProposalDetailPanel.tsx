@@ -288,7 +288,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
 
   return (
     <div className="mx-auto w-full max-w-6xl p-2 sm:p-4">
-      <div className={`${brand.card} p-5 sm:p-6`}>
+      <div className={`${brand.card} p-4 sm:p-6`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/admin"
@@ -367,7 +367,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
 
       <div className="mt-4 space-y-4">
         {proposalView && (
-          <div className={`${brand.card} p-5 sm:p-6`}>
+          <div className={`${brand.card} p-4 sm:p-6`}>
             <h2 className="font-display text-base text-content-charcoal">Engagement</h2>
 
             {/* Two-column on wide screens: stats + reading progress on the
@@ -446,7 +446,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
         )}
 
         {visits.length > 0 && (
-          <div className={`${brand.card} p-5 sm:p-6`}>
+          <div className={`${brand.card} p-4 sm:p-6`}>
             <CardHeading icon={IconHistory}>Visits</CardHeading>
             <p className="mt-1 text-xs text-text-muted">
               Every time this proposal was opened, in its own row — when it happened and how long
@@ -482,7 +482,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
             full-width stacked cards — the same reason: fill the available
             width instead of leaving it empty either side of one column. */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className={`${brand.card} p-5 sm:p-6`}>
+          <div className={`${brand.card} p-4 sm:p-6`}>
             <CardHeading icon={IconFileDescription}>Proposal Details</CardHeading>
             <dl className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
               <div>
@@ -525,7 +525,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
             </div>
           </div>
 
-          <div className={`${brand.card} p-5 sm:p-6`}>
+          <div className={`${brand.card} p-4 sm:p-6`}>
             <CardHeading icon={IconReceipt2}>Pricing</CardHeading>
             <div className="mt-5 space-y-2">
               <div className="flex items-center justify-between">

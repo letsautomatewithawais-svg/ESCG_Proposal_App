@@ -33,7 +33,12 @@ export default function Topbar() {
   }
 
   return (
-    <div className="flex items-center justify-between gap-1.5 border-b border-hairline px-6 py-3 sm:px-8">
+    // Hidden below `sm`: this breadcrumb ("Proposals" / "Proposals / Details")
+    // duplicates the mobile Sidebar's own nav tabs on the list view, and
+    // duplicates ProposalDetailPanel's own "Back to Proposals" + refresh
+    // cluster on the detail view — on a phone screen that's a whole extra
+    // header row saying nothing new before any real content appears.
+    <div className="hidden items-center justify-between gap-1.5 border-b border-hairline px-6 py-3 sm:flex sm:px-8">
       <div className="flex items-center gap-1.5">
         <Link
           href="/admin"
