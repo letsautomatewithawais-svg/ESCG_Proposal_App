@@ -94,6 +94,17 @@ type ProposalVisitInsert = Omit<ProposalVisitRow, "startedAt" | "lastSeenAt" | "
 };
 type ProposalVisitUpdate = Partial<ProposalVisitRow>;
 
+type LoginAttemptRow = {
+  ip: string;
+  failCount: number;
+  lockedUntil: string | null;
+  updatedAt: string;
+};
+type LoginAttemptInsert = Omit<LoginAttemptRow, "failCount"> & {
+  failCount?: number;
+};
+type LoginAttemptUpdate = Partial<LoginAttemptRow>;
+
 export type Database = {
   public: {
     Tables: {
@@ -125,6 +136,12 @@ export type Database = {
         Row: ProposalVisitRow;
         Insert: ProposalVisitInsert;
         Update: ProposalVisitUpdate;
+        Relationships: [];
+      };
+      LoginAttempt: {
+        Row: LoginAttemptRow;
+        Insert: LoginAttemptInsert;
+        Update: LoginAttemptUpdate;
         Relationships: [];
       };
     };
