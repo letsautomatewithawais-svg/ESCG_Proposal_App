@@ -13,6 +13,8 @@ type ProposalPayload = {
   clientName: string;
   clientEmail: string;
   frequencyOfService: string;
+  schedulingDay?: string;
+  schedulingTime?: string;
   scopeOfWork: string;
   pricePerVisit: number;
   monthlyCostExclGst: number;
@@ -114,6 +116,8 @@ export async function POST(request: Request) {
         clientName: data.clientName.trim(),
         clientEmail: data.clientEmail.trim(),
         frequencyOfService: data.frequencyOfService,
+        schedulingDay: data.schedulingDay?.trim() || null,
+        schedulingTime: data.schedulingTime?.trim() || null,
         scopeOfWork: data.scopeOfWork.trim(),
         pricePerVisit: data.pricePerVisit,
         monthlyCostExclGst: data.monthlyCostExclGst,

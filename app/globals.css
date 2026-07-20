@@ -41,6 +41,7 @@
   --font-display: var(--font-plus-jakarta-sans);
   --font-body: var(--font-inter-body);
   --font-ticket-mono: var(--font-ibm-plex-mono);
+  --font-signature: var(--font-caveat);
 }
 
 /*
@@ -101,6 +102,24 @@
   /* Genuinely disabled text (e.g. a "coming soon" menu item) — was reusing
      text-muted at 50% opacity, an opacity hack instead of a real token. */
   --color-text-disabled: #ada691;
+}
+
+/*
+ * Client-facing proposal DOCUMENT identity — matches Tory's sales PDF
+ * template (navy/teal, diagonal accent shapes). Scoped to
+ * app/proposals/[uuid]/document/* only; deliberately separate from both the
+ * warm ink/paper/sage editorial palette above (this replaces it on that one
+ * page) and the admin brand-primary/purple identity (untouched).
+ */
+@theme {
+  --color-escg-navy: #17334d; /* headings, diagonal corner shapes */
+  --color-escg-navy-deep: #0d2135; /* darker shade for gradients/shadows on navy shapes */
+  --color-escg-teal: #3f8fa6; /* matches the logo ring color */
+  --color-escg-teal-tint: #eaf4f7;
+  --color-escg-stripe: #c9d0d8; /* light gray diagonal accent bars */
+  --color-escg-text: #2b333c; /* document body text */
+  --color-escg-muted: #6b7680; /* secondary/caption text (e.g. "Pty Ltd" wordmark gray) */
+  --color-escg-hairline: #e2e6ea; /* table borders inside the document */
 }
 
 body {

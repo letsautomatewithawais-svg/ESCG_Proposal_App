@@ -29,6 +29,8 @@ model Proposal {
   clientName          String
   clientEmail         String
   frequencyOfService  String
+  schedulingDay       String?
+  schedulingTime      String?
   scopeOfWork         String         @db.Text
   pricePerVisit       Decimal        @db.Decimal(10, 2)
   monthlyCostExclGst  Decimal        @db.Decimal(10, 2)

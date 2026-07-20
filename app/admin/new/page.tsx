@@ -15,6 +15,8 @@ type FormState = {
   companyAddress: string;
   clientName: string;
   frequencyOfService: string;
+  schedulingDay: string;
+  schedulingTime: string;
   scopeOfWork: string;
   pricePerVisit: string;
   monthlyCostExclGst: string;
@@ -31,6 +33,8 @@ const INITIAL_FORM: FormState = {
   companyAddress: "",
   clientName: "",
   frequencyOfService: "",
+  schedulingDay: "",
+  schedulingTime: "",
   scopeOfWork: "",
   pricePerVisit: "",
   monthlyCostExclGst: "",
@@ -40,6 +44,18 @@ const INITIAL_FORM: FormState = {
 };
 
 const FREQUENCY_OPTIONS = ["Weekly", "Fortnightly", "Monthly", "Quarterly", "One-off"];
+
+const DAY_OPTIONS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+const TIME_OF_DAY_OPTIONS = ["Business hours", "After-hours", "Early morning"];
 
 const ACQUISITION_OPTIONS = [
   "Referral",
@@ -70,6 +86,8 @@ const SERVER_TO_FORM_FIELD: Record<string, keyof FormState> = {
   companyAddress: "companyAddress",
   clientName: "clientName",
   frequencyOfService: "frequencyOfService",
+  schedulingDay: "schedulingDay",
+  schedulingTime: "schedulingTime",
   scopeOfWork: "scopeOfWork",
   pricePerVisit: "pricePerVisit",
   monthlyCostExclGst: "monthlyCostExclGst",
@@ -252,6 +270,8 @@ export default function NewProposalPage() {
           clientName: form.clientName.trim(),
           clientEmail: form.clientEmail.trim(),
           frequencyOfService: form.frequencyOfService,
+          schedulingDay: form.schedulingDay || undefined,
+          schedulingTime: form.schedulingTime || undefined,
           scopeOfWork: form.scopeOfWork.trim(),
           pricePerVisit: Number(parseCurrencyInput(form.pricePerVisit)),
           monthlyCostExclGst: Number(parseCurrencyInput(form.monthlyCostExclGst)),
@@ -563,6 +583,47 @@ export default function NewProposalPage() {
                   <FieldError id="frequencyOfService-error" message={errors.frequencyOfService} />
                 </div>
 
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="schedulingDay" className={labelClass}>
+                      Scheduling Day{" "}
+                      <span className="font-normal text-text-muted">(optional)</span>
+                    </label>
+                    <select
+                      id="schedulingDay"
+                      value={form.schedulingDay}
+                      onChange={(e) => updateField("schedulingDay", e.target.value)}
+                      className={`mt-1 ${inputClass}`}
+                    >
+                      <option value="">Select day&hellip;</option>
+                      {DAY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="schedulingTime" className={labelClass}>
+                      Time of Day <span className="font-normal text-text-muted">(optional)</span>
+                    </label>
+                    <select
+                      id="schedulingTime"
+                      value={form.schedulingTime}
+                      onChange={(e) => updateField("schedulingTime", e.target.value)}
+                      className={`mt-1 ${inputClass}`}
+                    >
+                      <option value="">Select time&hellip;</option>
+                      {TIME_OF_DAY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label htmlFor="scopeOfWork" className={labelClass}>
                     Scope of Work
@@ -694,6 +755,10 @@ export default function NewProposalPage() {
                     <ReviewRow label="Client Email" value={form.clientEmail} />
                     <ReviewRow label="Walk-through Date" value={form.walkthroughDate} />
                     <ReviewRow label="Frequency" value={form.frequencyOfService} />
+                    <ReviewRow
+                      label="Scheduling"
+                      value={[form.schedulingDay, form.schedulingTime].filter(Boolean).join(" — ")}
+                    />
                     <ReviewRow
                       label="Price per Visit"
                       value={form.pricePerVisit ? `$${form.pricePerVisit}` : ""}

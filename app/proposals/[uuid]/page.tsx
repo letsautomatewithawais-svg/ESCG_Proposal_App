@@ -1,15 +1,32 @@
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
-import { formatCurrencyAUD, formatDateAU } from "@/lib/format";
-import { surface, text } from "@/lib/ui";
-import { Brand } from "../../components/Brand";
-import SignatureSection from "./SignatureSection";
+import { formatCurrencyAUD } from "@/lib/format";
 import ProposalTracker from "./ProposalTracker";
+import { CoverPage } from "./document/CoverPage";
+import { LetterPage } from "./document/LetterPage";
+import { FeaturesPage } from "./document/FeaturesPage";
+import { ScopeOfWorkPage } from "./document/ScopeOfWorkPage";
+import { SchedulingPricingInsurancePage } from "./document/SchedulingPricingInsurancePage";
+import { TermsPage } from "./document/TermsPage";
+import { AdditionalServicesPage } from "./document/AdditionalServicesPage";
+import { AcceptancePage } from "./document/AcceptancePage";
+import { QualityMethodologyPage } from "./document/QualityMethodologyPage";
+import { ColourCodingPage } from "./document/ColourCodingPage";
+import { MicrofibrePage } from "./document/MicrofibrePage";
 
 // Must always reflect live status/signature state — never statically prerendered.
 export const dynamic = "force-dynamic";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Matches the sample PDF's "07-02-2026" cover-page date style — distinct
+// from lib/format.ts's formatDateAU ("7 Feb 2026"), which is still used
+// elsewhere (admin) and isn't the look this document matches.
+function formatDateDDMMYYYY(date: Date): string {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  return `${dd}-${mm}-${date.getFullYear()}`;
+}
 
 export default async function ProposalPage({
   params,
@@ -49,130 +66,64 @@ export default async function ProposalPage({
 
   if (signatureError) throw signatureError;
 
+  const dateIssuedDisplay = formatDateDDMMYYYY(new Date(proposal.createdAt));
   const walkThroughDateDisplay = new Intl.DateTimeFormat("en-AU", {
     dateStyle: "full",
   }).format(new Date(proposal.walkThroughDate));
-  const dateIssuedDisplay = formatDateAU(new Date(proposal.createdAt));
-  const referenceNumber = proposal.id.slice(0, 8).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-hairline/70 px-4 py-10 font-sans print:bg-white print:p-0 sm:py-16">
+    <div className="min-h-screen bg-[#eef1f4] px-0 py-0 font-sans print:bg-white print:px-0! print:py-0! sm:px-4 sm:py-10">
       {!isPrintMode && <ProposalTracker proposalId={proposal.id} />}
       {!isPrintMode && (
-        <div className="mx-auto mb-4 w-full max-w-[210mm] text-right print:hidden">
+        <div className="mx-auto mb-4 w-full max-w-[210mm] px-6 text-right sm:px-0">
           <a
             href={`/api/proposals/${proposal.id}/pdf`}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-sage hover:text-sage/80"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-escg-teal hover:text-escg-teal/80"
           >
             Download PDF
           </a>
         </div>
       )}
-      <div className="mx-auto w-full max-w-[210mm] bg-paper shadow-[0_1px_2px_rgba(20,35,31,0.08),0_24px_48px_-28px_rgba(20,35,31,0.45)] print:max-w-none print:shadow-none">
-        <div className="px-6 py-10 sm:px-[18mm] sm:py-[16mm]">
-          <header className="flex items-start justify-between gap-6 border-b border-hairline pb-6">
-            <Brand />
-            <div className="text-right">
-              <p className={text.sectionLabel}>Proposal</p>
-              <p className="mt-1.5 font-mono text-xs text-warmgray">Ref. {referenceNumber}</p>
-              <p className="mt-0.5 font-mono text-xs text-warmgray">{dateIssuedDisplay}</p>
-            </div>
-          </header>
 
-          <div className="mt-6">
-            <p className={text.sectionLabel}>Prepared for</p>
-            <p className="mt-1.5 text-sm font-medium text-ink">{proposal.clientName}</p>
-            <p className="text-sm text-warmgray">{proposal.companyName}</p>
-            <p className="text-sm text-warmgray">{proposal.companyAddress}</p>
-          </div>
-
-          <div id="section-introduction" className="mt-10">
-            <h1 className={text.heroTitle}>Hi {proposal.clientName}</h1>
-            <p className="mt-3 text-base text-ink/70">
-              Here&apos;s your cleaning proposal, prepared for{" "}
-              <span className="font-medium text-ink">{proposal.companyName}</span>.
-            </p>
-            <p className={`mt-1 ${text.small}`}>
-              Walk-through scheduled for {walkThroughDateDisplay}
-            </p>
-          </div>
-
-          <section id="section-scope-of-work" className="mt-10 border-t border-hairline pt-8">
-            <h2 className={text.sectionLabel}>Scope of Work</h2>
-            <p className={`mt-3 whitespace-pre-line ${text.body}`}>{proposal.scopeOfWork}</p>
-          </section>
-
-          <section id="section-pricing" className="mt-10 border-t border-hairline pt-8">
-            <h2 className={text.sectionLabel}>Pricing</h2>
-
-            <div className={`mt-3 overflow-hidden ${surface.primary}`}>
-              <div className="divide-y divide-hairline">
-                <div className="flex items-center justify-between px-5 py-3.5 sm:px-6">
-                  <span className={text.muted}>Price per Visit</span>
-                  <span className="text-sm font-medium text-ink">
-                    {formatCurrencyAUD(proposal.pricePerVisit.toString())}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between px-5 py-3.5 sm:px-6">
-                  <span className={text.muted}>Monthly Cost (excl. GST)</span>
-                  <span className="text-sm font-medium text-ink">
-                    {formatCurrencyAUD(proposal.monthlyCostExclGst.toString())}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1 bg-ink/[0.035] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <span className="text-sm font-medium text-ink/70">
-                  Total Monthly Amount (incl. GST)
-                </span>
-                <span className={text.priceHeadline}>
-                  {formatCurrencyAUD(proposal.totalMonthlyInclGst.toString())}
-                </span>
-              </div>
-            </div>
-
-            <p className={`mt-3 ${text.muted}`}>
-              Service Frequency:{" "}
-              <span className="font-medium text-ink">{proposal.frequencyOfService}</span>
-            </p>
-          </section>
-
-          <section id="section-terms" className="mt-10 border-t border-hairline pt-8">
-            <h2 className={text.sectionLabel}>Terms</h2>
-            <p className={`mt-2 leading-6 ${text.small}`}>
-              This proposal is valid for 30 days from the date issued. Services will commence on a
-              mutually agreed date following acceptance. Either party may terminate the service
-              agreement with 30 days&apos; written notice. Payment is due monthly in advance unless
-              otherwise agreed in writing.
-            </p>
-          </section>
-
-          <section
-            id="section-signature-block"
-            className={`mt-10 border-t border-hairline pt-8 ${surface.primary} p-6 sm:p-8`}
-          >
-            <SignatureSection
-              proposalId={proposal.id}
-              alreadySigned={!!signature}
-              existingSignature={
-                signature
-                  ? {
-                      typedName: signature.typedName,
-                      signedAt: new Date(signature.signedAt).toISOString(),
-                      signatureImage: signature.signatureImage,
-                    }
-                  : null
+      <CoverPage
+        companyName={proposal.companyName}
+        companyAddress={proposal.companyAddress}
+        dateIssuedDisplay={dateIssuedDisplay}
+      />
+      <LetterPage clientName={proposal.clientName} />
+      <FeaturesPage />
+      <ScopeOfWorkPage scopeOfWork={proposal.scopeOfWork} />
+      <SchedulingPricingInsurancePage
+        frequencyOfService={proposal.frequencyOfService}
+        schedulingDay={proposal.schedulingDay}
+        schedulingTime={proposal.schedulingTime}
+        walkThroughDateDisplay={walkThroughDateDisplay}
+        pricePerVisitDisplay={formatCurrencyAUD(proposal.pricePerVisit)}
+        monthlyCostExclGstDisplay={formatCurrencyAUD(proposal.monthlyCostExclGst)}
+        totalMonthlyInclGstDisplay={formatCurrencyAUD(proposal.totalMonthlyInclGst)}
+      />
+      <TermsPage />
+      <AdditionalServicesPage />
+      <AcceptancePage
+        companyName={proposal.companyName}
+        clientName={proposal.clientName}
+        dateIssuedDisplay={dateIssuedDisplay}
+        proposalId={proposal.id}
+        alreadySigned={!!signature}
+        existingSignature={
+          signature
+            ? {
+                typedName: signature.typedName,
+                signedAt: new Date(signature.signedAt).toISOString(),
+                signatureImage: signature.signatureImage,
               }
-              printMode={isPrintMode}
-            />
-          </section>
-
-          <footer className="mt-12 flex items-center justify-between border-t border-hairline pt-4">
-            <p className={text.small}>Eastern Suburbs Cleaning Group</p>
-            <p className={`${text.small} font-mono`}>Ref. {referenceNumber}</p>
-          </footer>
-        </div>
-      </div>
+            : null
+        }
+        printMode={isPrintMode}
+      />
+      <QualityMethodologyPage />
+      <ColourCodingPage />
+      <MicrofibrePage />
     </div>
   );
 }

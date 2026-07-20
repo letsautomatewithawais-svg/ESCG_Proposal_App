@@ -184,3 +184,13 @@ RETURNS void LANGUAGE sql AS $$
 $$;
 
 ---------------------------------------------------------
+
+-- 2026-07-20
+-- Scheduling detail (day of week + time-of-day session) for the client-facing
+-- proposal document's "Scheduling" line, matching Tory's sales PDF template.
+-- Nullable so existing proposals render with just frequencyOfService.
+
+ALTER TABLE "Proposal" ADD COLUMN "schedulingDay" TEXT;
+ALTER TABLE "Proposal" ADD COLUMN "schedulingTime" TEXT;
+
+---------------------------------------------------------

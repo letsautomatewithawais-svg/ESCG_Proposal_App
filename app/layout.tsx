@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Caveat, Fraunces, IBM_Plex_Mono, Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -40,6 +40,14 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
 });
 
+// Signature flourish on the proposal document's letter page only (the
+// founder's "T Papa" signoff) — not used anywhere else in the app.
+const caveat = Caveat({
+  variable: "--font-caveat",
+  weight: ["600"],
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "ESCG Proposal App",
   description: "Proposal generation tool for Eastern Suburbs Cleaning Group",
@@ -53,7 +61,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable} ${interBody.variable} ${ibmPlexMono.variable} ${plusJakartaSans.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable} ${interBody.variable} ${ibmPlexMono.variable} ${plusJakartaSans.variable} ${caveat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>

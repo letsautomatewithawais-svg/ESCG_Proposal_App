@@ -12,6 +12,8 @@ type ProposalRow = {
   clientName: string;
   clientEmail: string;
   frequencyOfService: string;
+  schedulingDay: string | null;
+  schedulingTime: string | null;
   scopeOfWork: string;
   pricePerVisit: number;
   monthlyCostExclGst: number;
