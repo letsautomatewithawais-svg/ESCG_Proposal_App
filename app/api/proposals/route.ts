@@ -12,6 +12,11 @@ const MAX_MONEY_VALUE = 9_999_999.99;
 // companyName/clientName render prominently on the cover page (title, "Prepared
 // For" table) — an unbounded value visibly distorts that layout.
 const MAX_NAME_LENGTH = 100;
+// Date.parse() happily accepts wildly out-of-range years (e.g. a mistyped
+// input can parse as year 60801) as "valid" — bound to a sane real-world
+// range instead of just checking it's parseable at all.
+const MIN_WALKTHROUGH_YEAR = 2000;
+const MAX_WALKTHROUGH_YEAR = 2100;
 
 type ProposalPayload = {
   walkThroughDate: string;
@@ -60,12 +65,19 @@ function validate(body: unknown): Record<string, string> {
   }
 
   const walkThroughDateRaw = body.walkThroughDate;
+  const walkThroughDateMs =
+    typeof walkThroughDateRaw === "string" ? Date.parse(walkThroughDateRaw) : NaN;
   if (
     typeof walkThroughDateRaw !== "string" ||
     !walkThroughDateRaw ||
-    Number.isNaN(Date.parse(walkThroughDateRaw))
+    Number.isNaN(walkThroughDateMs)
   ) {
     errors.walkThroughDate = "A valid walk-through date is required.";
+  } else {
+    const year = new Date(walkThroughDateMs).getUTCFullYear();
+    if (year < MIN_WALKTHROUGH_YEAR || year > MAX_WALKTHROUGH_YEAR) {
+      errors.walkThroughDate = `Walk-through date must be between ${MIN_WALKTHROUGH_YEAR} and ${MAX_WALKTHROUGH_YEAR}.`;
+    }
   }
 
   const email = str("clientEmail");
