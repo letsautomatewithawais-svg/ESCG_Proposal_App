@@ -5,6 +5,13 @@ import { sendProposalEmail } from "@/lib/email";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GST_MULTIPLIER = 1.1;
+// pricePerVisit/monthlyCostExclGst/totalMonthlyInclGst are all Decimal(10,2)
+// columns (max 99,999,999.99) — capped well below that so monthlyCostExclGst
+// * GST_MULTIPLIER can never overflow totalMonthlyInclGst's own column limit.
+const MAX_MONEY_VALUE = 9_999_999.99;
+// companyName/clientName render prominently on the cover page (title, "Prepared
+// For" table) — an unbounded value visibly distorts that layout.
+const MAX_NAME_LENGTH = 100;
 
 type ProposalPayload = {
   walkThroughDate: string;
@@ -36,8 +43,14 @@ function validate(body: unknown): Record<string, string> {
     typeof body[key] === "string" ? (body[key] as string).trim() : "";
 
   if (!str("companyName")) errors.companyName = "Company name is required.";
+  else if (str("companyName").length > MAX_NAME_LENGTH) {
+    errors.companyName = `Company name must be ${MAX_NAME_LENGTH} characters or fewer.`;
+  }
   if (!str("companyAddress")) errors.companyAddress = "Company address is required.";
   if (!str("clientName")) errors.clientName = "Client's name is required.";
+  else if (str("clientName").length > MAX_NAME_LENGTH) {
+    errors.clientName = `Client name must be ${MAX_NAME_LENGTH} characters or fewer.`;
+  }
   if (!str("frequencyOfService")) {
     errors.frequencyOfService = "Frequency of service is required.";
   }
@@ -69,6 +82,8 @@ function validate(body: unknown): Record<string, string> {
     pricePerVisit <= 0
   ) {
     errors.pricePerVisit = "Price per visit must be a positive number.";
+  } else if (pricePerVisit > MAX_MONEY_VALUE) {
+    errors.pricePerVisit = `Price per visit must be ${MAX_MONEY_VALUE.toLocaleString()} or less.`;
   }
 
   const monthlyCostExclGst = body.monthlyCostExclGst;
@@ -78,6 +93,8 @@ function validate(body: unknown): Record<string, string> {
     monthlyCostExclGst < 0
   ) {
     errors.monthlyCostExclGst = "Monthly cost must be a valid number.";
+  } else if (monthlyCostExclGst > MAX_MONEY_VALUE) {
+    errors.monthlyCostExclGst = `Monthly cost must be ${MAX_MONEY_VALUE.toLocaleString()} or less.`;
   }
 
   const sendMode = body.sendMode;
