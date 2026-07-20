@@ -9,26 +9,15 @@ type BrandProps = {
 export function Brand({ label, dark = false }: BrandProps) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span
-        className={`h-2.5 w-2.5 shrink-0 ${dark ? "bg-brand-green" : "bg-sage"}`}
-        aria-hidden="true"
-      />
-      <span className="inline-flex items-baseline gap-1.5">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo.png" alt="Eastern Suburbs Cleaning Group" className="h-8 w-auto shrink-0" />
+      {label && (
         <span
-          className={`font-serif text-sm font-semibold tracking-tight [font-variant-caps:small-caps] ${
-            dark ? "text-surface-off" : "text-ink"
-          }`}
+          className={`font-sans text-xs font-medium ${dark ? "text-text-muted" : "text-warmgray"}`}
         >
-          escg
+          {label}
         </span>
-        {label && (
-          <span
-            className={`font-sans text-xs font-medium ${dark ? "text-text-muted" : "text-warmgray"}`}
-          >
-            {label}
-          </span>
-        )}
-      </span>
+      )}
     </span>
   );
 }

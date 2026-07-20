@@ -92,25 +92,15 @@ export default function Sidebar({ displayName }: { displayName: string }) {
           className={`flex items-center gap-2 px-4 py-5 ${collapsed ? "flex-col" : "justify-between px-5"}`}
         >
           {collapsed ? (
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-brand-primary text-xs font-bold text-white"
-              aria-hidden="true"
-            >
-              E
-            </span>
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/logo-icon.png"
+              alt="Eastern Suburbs Cleaning Group"
+              className="h-7 w-7 shrink-0 rounded-[7px] object-cover"
+            />
           ) : (
-            <div className="flex items-center gap-2.5">
-              <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand-primary text-xs font-bold text-white"
-                aria-hidden="true"
-              >
-                E
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="text-sm font-bold tracking-tight text-content-charcoal">ESCG</span>
-                <span className="text-[11px] text-text-muted">Eastern Suburbs Cleaning Group</span>
-              </span>
-            </div>
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/logo.png" alt="Eastern Suburbs Cleaning Group" className="h-8 w-auto shrink-0" />
           )}
           <button
             type="button"
