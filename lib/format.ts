@@ -8,20 +8,29 @@ export function formatCurrencyAUD(value: number | string): string {
   );
 }
 
-export function formatDateAU(date: Date): string {
-  return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" }).format(date);
+// `timeZone` defaults to undefined — Intl.DateTimeFormat then falls back to
+// the executing runtime's own local zone (the browser's for a client
+// component, the server's for SSR), which is exactly the ambiguity that
+// prompted adding this param: pass an explicit IANA zone (see
+// lib/timezone.ts) wherever "whose local time is this" actually matters.
+export function formatDateAU(date: Date, timeZone?: string): string {
+  return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeZone }).format(date);
 }
 
-export function formatDateTimeAU(date: Date): string {
-  return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(
-    date,
-  );
+export function formatDateTimeAU(date: Date, timeZone?: string): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone,
+  }).format(date);
 }
 
-export function formatDateTimeAUWithSeconds(date: Date): string {
-  return new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "medium" }).format(
-    date,
-  );
+export function formatDateTimeAUWithSeconds(date: Date, timeZone?: string): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    dateStyle: "medium",
+    timeStyle: "medium",
+    timeZone,
+  }).format(date);
 }
 
 export function formatDurationSeconds(totalSeconds: number): string {

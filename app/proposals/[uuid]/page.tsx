@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { formatCurrencyAUD } from "@/lib/format";
+import { DEFAULT_TIMEZONE } from "@/lib/timezone";
 import ProposalTracker from "./ProposalTracker";
 import { CoverPage } from "./document/CoverPage";
 import { LetterPage } from "./document/LetterPage";
@@ -22,10 +23,22 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 // Matches the sample PDF's "07-02-2026" cover-page date style — distinct
 // from lib/format.ts's formatDateAU ("7 Feb 2026"), which is still used
 // elsewhere (admin) and isn't the look this document matches.
+//
+// This is Tory's client-facing document for an Australian client, so its
+// date must always read as Australian local time — regardless of which
+// timezone the server happens to render in (Vercel's functions run in UTC)
+// or where the admin/client's own browser is. Explicit timeZone (not the
+// runtime's implicit local one) via formatToParts, since date.getDate() /
+// getMonth() only ever reflect the executing runtime's own local zone.
 function formatDateDDMMYYYY(date: Date): string {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  return `${dd}-${mm}-${date.getFullYear()}`;
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: DEFAULT_TIMEZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${get("day")}-${get("month")}-${get("year")}`;
 }
 
 export default async function ProposalPage({
@@ -69,6 +82,7 @@ export default async function ProposalPage({
   const dateIssuedDisplay = formatDateDDMMYYYY(new Date(proposal.createdAt));
   const walkThroughDateDisplay = new Intl.DateTimeFormat("en-AU", {
     dateStyle: "full",
+    timeZone: DEFAULT_TIMEZONE,
   }).format(new Date(proposal.walkThroughDate));
 
   return (

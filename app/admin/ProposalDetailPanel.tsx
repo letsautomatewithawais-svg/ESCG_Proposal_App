@@ -14,6 +14,7 @@ import {
   referenceNumber,
 } from "@/lib/format";
 import { brand, REFRESH_EVENT } from "@/lib/ui";
+import { DEFAULT_TIMEZONE, TIMEZONE_OPTIONS } from "@/lib/timezone";
 import StatusPill from "@/app/admin/StatusPill";
 import ConfirmDialog from "@/app/admin/ConfirmDialog";
 import {
@@ -25,7 +26,17 @@ import {
   IconHistory,
   IconReceipt2,
   IconRefresh,
+  IconWorld,
 } from "@tabler/icons-react";
+
+// Persisted per-browser (not per-proposal) — whichever zone an admin picks
+// stays selected while they move between proposals.
+const TIMEZONE_STORAGE_KEY = "escg:admin-timezone";
+
+function getStoredTimezone(): string {
+  if (typeof window === "undefined") return DEFAULT_TIMEZONE;
+  return window.localStorage.getItem(TIMEZONE_STORAGE_KEY) || DEFAULT_TIMEZONE;
+}
 
 // A proposal's engagement stats (opens, time on page, section progress)
 // change live while an admin is looking at this exact panel — the client
@@ -128,7 +139,13 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionWarning, setActionWarning] = useState<string | null>(null);
+  const [timezone, setTimezoneState] = useState<string>(getStoredTimezone);
   const cancelledRef = useRef(false);
+
+  function setTimezone(tz: string) {
+    setTimezoneState(tz);
+    if (typeof window !== "undefined") window.localStorage.setItem(TIMEZONE_STORAGE_KEY, tz);
+  }
   // Tracks whether we've ever successfully loaded data, without making
   // `loadData` depend on `data` state (that would recreate it — and reset
   // the polling interval below — on every successful poll).
@@ -273,7 +290,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
 
   const { proposal, signature, proposalView, sectionViews, visits } = data;
 
-  const walkThroughDateDisplay = formatDateAU(new Date(proposal.walkThroughDate));
+  const walkThroughDateDisplay = formatDateAU(new Date(proposal.walkThroughDate), timezone);
   const sectionViewedAt = new Map(
     sectionViews.map((view) => [view.sectionName, new Date(view.firstViewedAt)]),
   );
@@ -368,7 +385,25 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
       <div className="mt-4 space-y-4">
         {proposalView && (
           <div className={`${brand.card} p-4 sm:p-6`}>
-            <h2 className="font-display text-base text-content-charcoal">Engagement</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="shrink-0 font-display text-base text-content-charcoal">Engagement</h2>
+              <label className="flex w-full min-w-0 items-center gap-1.5 text-xs text-text-muted sm:w-auto">
+                <IconWorld size={14} stroke={1.9} className="shrink-0" />
+                <span className="hidden shrink-0 sm:inline">Times shown in</span>
+                <select
+                  aria-label="Timezone for displayed times"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="min-w-0 flex-1 rounded-[6px] border border-hairline bg-white py-1 pl-1.5 pr-6 font-medium text-content-charcoal focus:outline-none focus:ring-1 focus:ring-brand-primary sm:flex-initial"
+                >
+                  {TIMEZONE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
             {/* Two-column on wide screens: stats + reading progress on the
                 left, the timeline (often the longest content) alongside on
@@ -380,7 +415,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
                   <EngagementStat
                     icon={IconCalendarEvent}
                     label="First Opened"
-                    value={formatDateTimeAU(new Date(proposalView.firstOpenAt))}
+                    value={formatDateTimeAU(new Date(proposalView.firstOpenAt), timezone)}
                   />
                   <EngagementStat
                     icon={IconClock}
@@ -432,7 +467,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
                       <div className="min-w-0 flex-1 pt-0.5">
                         <p className="text-sm font-medium text-content-charcoal">{name} viewed</p>
                         <p className="mt-0.5 font-ticket-mono text-xs text-text-muted">
-                          {formatDateTimeAUWithSeconds(sectionViewedAt.get(name)!)}
+                          {formatDateTimeAUWithSeconds(sectionViewedAt.get(name)!, timezone)}
                           {" · "}
                           {formatDurationSeconds(sectionTimeSpent.get(name) ?? 0)} spent
                         </p>
@@ -465,7 +500,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
                         Visit {visits.length - index}
                       </p>
                       <p className="mt-0.5 font-ticket-mono text-xs text-text-muted">
-                        {formatDateTimeAUWithSeconds(new Date(visit.startedAt))}
+                        {formatDateTimeAUWithSeconds(new Date(visit.startedAt), timezone)}
                       </p>
                     </div>
                   </div>
@@ -569,7 +604,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
                   <span className="font-medium text-content-charcoal">{signature.typedName}</span>{" "}
                   on{" "}
                   <span className="font-ticket-mono">
-                    {formatDateTimeAU(new Date(signature.signedAt))}
+                    {formatDateTimeAU(new Date(signature.signedAt), timezone)}
                   </span>
                 </p>
               </div>
