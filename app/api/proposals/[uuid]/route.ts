@@ -153,6 +153,25 @@ export async function PATCH(
       return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
     }
 
+    // A signed proposal has a real signature on file — moving it to any
+    // other status here would leave the status pill and the signature
+    // permanently out of sync (no UI currently does this, but the endpoint
+    // itself shouldn't allow it either).
+    if (status !== "Signed") {
+      const { data: signature, error: signatureError } = await supabaseAdmin
+        .from("Signature")
+        .select("id")
+        .eq("proposalId", uuid)
+        .maybeSingle();
+      if (signatureError) throw signatureError;
+      if (signature) {
+        return NextResponse.json(
+          { error: "This proposal has already been signed and its status cannot be changed." },
+          { status: 409 },
+        );
+      }
+    }
+
     const { error: updateError } = await supabaseAdmin
       .from("Proposal")
       .update({ status, updatedAt: new Date().toISOString() })
@@ -203,6 +222,12 @@ export async function DELETE(
       .delete()
       .eq("proposalId", uuid);
     if (sectionViewError) throw sectionViewError;
+
+    const { error: proposalVisitError } = await supabaseAdmin
+      .from("ProposalVisit")
+      .delete()
+      .eq("proposalId", uuid);
+    if (proposalVisitError) throw proposalVisitError;
 
     const { error: proposalViewError } = await supabaseAdmin
       .from("ProposalView")
