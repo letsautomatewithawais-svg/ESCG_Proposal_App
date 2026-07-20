@@ -37,20 +37,20 @@ function summarize(events: Date[], now: Date): StatSummary {
 async function getProposalsPageData() {
   const now = new Date();
 
-  const { data: proposals, error: proposalsError } = await supabaseAdmin
-    .from("Proposal")
-    .select("id, clientName, companyName, status, createdAt, updatedAt, totalMonthlyInclGst")
-    .order("createdAt", { ascending: false });
+  const [
+    { data: proposals, error: proposalsError },
+    { data: proposalViews, error: viewsError },
+    { data: signatures, error: signaturesError },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("Proposal")
+      .select("id, clientName, companyName, status, createdAt, updatedAt, totalMonthlyInclGst")
+      .order("createdAt", { ascending: false }),
+    supabaseAdmin.from("ProposalView").select("proposalId, openCount, firstOpenAt, totalSeconds"),
+    supabaseAdmin.from("Signature").select("proposalId, signedAt"),
+  ]);
   if (proposalsError) throw proposalsError;
-
-  const { data: proposalViews, error: viewsError } = await supabaseAdmin
-    .from("ProposalView")
-    .select("proposalId, openCount, firstOpenAt, totalSeconds");
   if (viewsError) throw viewsError;
-
-  const { data: signatures, error: signaturesError } = await supabaseAdmin
-    .from("Signature")
-    .select("proposalId, signedAt");
   if (signaturesError) throw signaturesError;
 
   const viewByProposalId = new Map((proposalViews ?? []).map((v) => [v.proposalId, v]));

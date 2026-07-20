@@ -61,23 +61,22 @@ export default async function ProposalPage({
     notFound();
   }
 
-  const { data: proposal, error: proposalError } = await supabaseAdmin
-    .from("Proposal")
-    .select("*")
-    .eq("id", uuid)
-    .maybeSingle();
+  const [
+    { data: proposal, error: proposalError },
+    { data: signature, error: signatureError },
+  ] = await Promise.all([
+    supabaseAdmin.from("Proposal").select("*").eq("id", uuid).maybeSingle(),
+    supabaseAdmin
+      .from("Signature")
+      .select("typedName, signedAt, signatureImage")
+      .eq("proposalId", uuid)
+      .maybeSingle(),
+  ]);
 
   if (proposalError) throw proposalError;
   if (!proposal) {
     notFound();
   }
-
-  const { data: signature, error: signatureError } = await supabaseAdmin
-    .from("Signature")
-    .select("typedName, signedAt, signatureImage")
-    .eq("proposalId", uuid)
-    .maybeSingle();
-
   if (signatureError) throw signatureError;
 
   const dateIssuedDisplay = formatDateDDMMYYYY(new Date(utcIso(proposal.createdAt)));
