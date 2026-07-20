@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { formatCurrencyAUD } from "@/lib/format";
 import { DEFAULT_TIMEZONE } from "@/lib/timezone";
+import { utcIso } from "@/lib/dates";
 import ProposalTracker from "./ProposalTracker";
 import { CoverPage } from "./document/CoverPage";
 import { LetterPage } from "./document/LetterPage";
@@ -79,11 +80,11 @@ export default async function ProposalPage({
 
   if (signatureError) throw signatureError;
 
-  const dateIssuedDisplay = formatDateDDMMYYYY(new Date(proposal.createdAt));
+  const dateIssuedDisplay = formatDateDDMMYYYY(new Date(utcIso(proposal.createdAt)));
   const walkThroughDateDisplay = new Intl.DateTimeFormat("en-AU", {
     dateStyle: "full",
     timeZone: DEFAULT_TIMEZONE,
-  }).format(new Date(proposal.walkThroughDate));
+  }).format(new Date(utcIso(proposal.walkThroughDate)));
 
   return (
     <div className="min-h-screen bg-[#eef1f4] px-0 py-0 font-sans print:bg-white print:px-0! print:py-0! sm:px-4 sm:py-10">
@@ -128,7 +129,7 @@ export default async function ProposalPage({
           signature
             ? {
                 typedName: signature.typedName,
-                signedAt: new Date(signature.signedAt).toISOString(),
+                signedAt: new Date(utcIso(signature.signedAt)).toISOString(),
                 signatureImage: signature.signatureImage,
               }
             : null

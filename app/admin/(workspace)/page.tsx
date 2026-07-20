@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { supabaseAdmin } from "@/lib/supabase";
+import { utcIso } from "@/lib/dates";
 import ProposalsWorkspace from "./ProposalsWorkspace";
 
 // Always reflects live proposal/engagement data — never statically prerendered.
@@ -62,32 +63,32 @@ async function getProposalsPageData() {
   // current status's updatedAt reliably reflects when that transition
   // happened (nothing else touches the row afterward until it moves again).
   const totalStat = summarize(
-    proposals.map((p) => new Date(p.createdAt)),
+    proposals.map((p) => new Date(utcIso(p.createdAt))),
     now,
   );
   const sentStat = summarize(
-    proposals.filter((p) => p.status === "Sent").map((p) => new Date(p.updatedAt)),
+    proposals.filter((p) => p.status === "Sent").map((p) => new Date(utcIso(p.updatedAt))),
     now,
   );
   const openedStat = summarize(
     proposals
       .filter((p) => viewByProposalId.has(p.id))
-      .map((p) => new Date(viewByProposalId.get(p.id)!.firstOpenAt)),
+      .map((p) => new Date(utcIso(viewByProposalId.get(p.id)!.firstOpenAt))),
     now,
   );
   const signedStat = summarize(
     proposals
       .filter((p) => signatureByProposalId.has(p.id))
-      .map((p) => new Date(signatureByProposalId.get(p.id)!.signedAt)),
+      .map((p) => new Date(utcIso(signatureByProposalId.get(p.id)!.signedAt))),
     now,
   );
   const lostStat = summarize(
-    proposals.filter((p) => p.status === "Lost").map((p) => new Date(p.updatedAt)),
+    proposals.filter((p) => p.status === "Lost").map((p) => new Date(utcIso(p.updatedAt))),
     now,
   );
 
   const lastActivityAt = proposals.reduce((latest: Date | null, p) => {
-    const updatedAt = new Date(p.updatedAt);
+    const updatedAt = new Date(utcIso(p.updatedAt));
     return !latest || updatedAt > latest ? updatedAt : latest;
   }, null as Date | null);
 
@@ -98,8 +99,8 @@ async function getProposalsPageData() {
       clientName: p.clientName,
       companyName: p.companyName,
       status: p.status,
-      createdAt: new Date(p.createdAt).toISOString(),
-      updatedAt: new Date(p.updatedAt).toISOString(),
+      createdAt: new Date(utcIso(p.createdAt)).toISOString(),
+      updatedAt: new Date(utcIso(p.updatedAt)).toISOString(),
       totalMonthlyInclGst: String(p.totalMonthlyInclGst),
       openCount: view?.openCount ?? 0,
       totalSeconds: view?.totalSeconds ?? null,

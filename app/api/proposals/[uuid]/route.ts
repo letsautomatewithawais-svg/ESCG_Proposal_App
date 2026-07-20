@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isValidSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { utcIso } from "@/lib/dates";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VALID_STATUSES = ["Draft", "Sent", "Opened", "Signed", "Lost"] as const;
@@ -90,11 +91,26 @@ export async function GET(
   }
 
   return NextResponse.json({
-    proposal,
-    signature: signature ?? null,
-    proposalView: proposalView ?? null,
-    sectionViews: sectionViews ?? [],
-    visits: visits ?? [],
+    proposal: {
+      ...proposal,
+      walkThroughDate: utcIso(proposal.walkThroughDate),
+      createdAt: utcIso(proposal.createdAt),
+      updatedAt: utcIso(proposal.updatedAt),
+    },
+    signature: signature
+      ? { ...signature, signedAt: utcIso(signature.signedAt) }
+      : null,
+    proposalView: proposalView
+      ? { ...proposalView, firstOpenAt: utcIso(proposalView.firstOpenAt) }
+      : null,
+    sectionViews: (sectionViews ?? []).map((sectionView) => ({
+      ...sectionView,
+      firstViewedAt: utcIso(sectionView.firstViewedAt),
+    })),
+    visits: (visits ?? []).map((visit) => ({
+      ...visit,
+      startedAt: utcIso(visit.startedAt),
+    })),
   });
 }
 
