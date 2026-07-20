@@ -4,6 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_SIGNATURE_LENGTH = 100;
+// A signature-pad PNG is a few KB at most; 500,000 base64 characters (~375KB
+// decoded) is generous headroom without allowing an unbounded payload.
+const MAX_SIGNATURE_LENGTH = 500_000;
+// Postgres unique_violation — hit when two sign requests for the same
+// proposal race each other (e.g. opened in two tabs/devices at once).
+const UNIQUE_VIOLATION = "23505";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -47,6 +53,9 @@ export async function POST(
   ) {
     return NextResponse.json({ error: "A signature is required." }, { status: 400 });
   }
+  if (signatureImage.length > MAX_SIGNATURE_LENGTH) {
+    return NextResponse.json({ error: "Signature image is too large." }, { status: 400 });
+  }
 
   const signedAt =
     signedAtRaw && !Number.isNaN(Date.parse(signedAtRaw)) ? new Date(signedAtRaw) : new Date();
@@ -80,7 +89,19 @@ export async function POST(
       signedAt: signedAt.toISOString(),
       ipAddress,
     });
-    if (signatureError) throw signatureError;
+    if (signatureError) {
+      // Another request for the same proposal (a second tab/device) won the
+      // race and inserted its Signature row first — the DB's unique
+      // constraint on proposalId caught this one, correctly, but the client
+      // deserves "already signed", not a generic failure.
+      if (signatureError.code === UNIQUE_VIOLATION) {
+        return NextResponse.json(
+          { error: "This proposal has already been signed." },
+          { status: 409 },
+        );
+      }
+      throw signatureError;
+    }
 
     // A completed signature is unambiguous proof the Signature Block section
     // was seen and interacted with — guarantee it's recorded as viewed
