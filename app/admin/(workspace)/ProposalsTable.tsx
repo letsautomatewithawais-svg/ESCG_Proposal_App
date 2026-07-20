@@ -118,9 +118,9 @@ export default function ProposalsTable({ proposals }: { proposals: TableProposal
   }
 
   return (
-    <div className="px-6 py-4 sm:px-8">
+    <div className="px-3 py-4 sm:px-8">
       <div className={`${brand.panel} overflow-hidden`}>
-        <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-5 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-3 py-2.5 sm:px-5">
           <label className={`${brand.filterPill} w-56`}>
             <IconSearch size={13} stroke={1.9} className="shrink-0 text-text-muted" />
             <input

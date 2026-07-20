@@ -98,7 +98,7 @@ type StatStripProps = {
 // route itself.
 export default function StatStrip({ total, sent, opened, signed, lost, lastActivityAt }: StatStripProps) {
   return (
-    <div className="border-b border-hairline bg-surface-off px-6 py-4 sm:px-8">
+    <div className="border-b border-hairline bg-surface-off px-3 py-4 sm:px-8">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-xl text-content-charcoal sm:text-2xl">Proposals</h1>
@@ -117,7 +117,7 @@ export default function StatStrip({ total, sent, opened, signed, lost, lastActiv
         </Link>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
         <StatCard
           label="Total Proposals"
           stat={total}
