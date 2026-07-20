@@ -6,6 +6,8 @@ import { IconFilterOff, IconInbox, IconSearch } from "@tabler/icons-react";
 import { brand } from "@/lib/ui";
 import ProposalRow from "../ProposalRow";
 
+const PAGE_SIZE = 25;
+
 const STATUS_OPTIONS = ["Draft", "Sent", "Opened", "Signed", "Lost"] as const;
 const RANGE_OPTIONS = [
   { value: "", label: "All time" },
@@ -98,6 +100,22 @@ export default function ProposalsTable({ proposals }: { proposals: TableProposal
     // Default: Last activity
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
+
+  // Rendering every row unconditionally doesn't scale — this bounds the DOM
+  // to PAGE_SIZE rows at a time while search/filter/sort still run over the
+  // complete in-memory list above. Reset back to one page whenever the
+  // filter/sort params change, so "Load more" doesn't carry a stale count
+  // across an unrelated filter change — adjusted during render (React's
+  // recommended pattern for this), not in an effect, which would cause an
+  // extra cascading render on every filter change.
+  const filterKey = `${status}|${q}|${range}|${sort}`;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey);
+    setVisibleCount(PAGE_SIZE);
+  }
+  const visible = sorted.slice(0, visibleCount);
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -237,7 +255,7 @@ export default function ProposalsTable({ proposals }: { proposals: TableProposal
               )}
             </div>
           ) : (
-            sorted.map((proposal) => (
+            visible.map((proposal) => (
               <ProposalRow
                 key={proposal.id}
                 id={proposal.id}
@@ -253,6 +271,18 @@ export default function ProposalsTable({ proposals }: { proposals: TableProposal
             ))
           )}
         </div>
+
+        {sorted.length > visible.length && (
+          <div className="flex items-center justify-center border-t border-hairline py-3">
+            <button
+              type="button"
+              onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+              className="text-xs font-semibold text-brand-primary hover:text-brand-primary/80"
+            >
+              Load more ({sorted.length - visible.length} remaining)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

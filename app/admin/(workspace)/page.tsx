@@ -45,7 +45,12 @@ async function getProposalsPageData() {
     supabaseAdmin
       .from("Proposal")
       .select("id, clientName, companyName, status, createdAt, updatedAt, totalMonthlyInclGst")
-      .order("createdAt", { ascending: false }),
+      .order("createdAt", { ascending: false })
+      // No pagination existed here at all — bounds the worst case (payload
+      // and render cost growing unboundedly with every proposal ever
+      // created) well above any realistic near-term volume, without
+      // touching the trend/stat math below, which wants full history.
+      .limit(2000),
     supabaseAdmin.from("ProposalView").select("proposalId, openCount, firstOpenAt, totalSeconds"),
     supabaseAdmin.from("Signature").select("proposalId, signedAt"),
   ]);
