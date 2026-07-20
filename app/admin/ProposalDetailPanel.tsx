@@ -15,6 +15,7 @@ import {
 } from "@/lib/format";
 import { brand, REFRESH_EVENT } from "@/lib/ui";
 import { DEFAULT_TIMEZONE, TIMEZONE_OPTIONS } from "@/lib/timezone";
+import { TRACKED_SECTION_NAMES } from "@/lib/sections";
 import StatusPill from "@/app/admin/StatusPill";
 import ConfirmDialog from "@/app/admin/ConfirmDialog";
 import {
@@ -46,26 +47,11 @@ function getStoredTimezone(): string {
 // button fires (see Topbar.tsx, which dispatches REFRESH_EVENT).
 const AUTO_REFRESH_INTERVAL_MS = 20_000;
 
-// Must stay in lockstep with app/proposals/[uuid]/ProposalTracker.tsx's
-// TRACKED_SECTIONS names (and the "Signature Block" fallback name hardcoded
-// in app/api/proposals/[uuid]/sign/route.ts) — any SectionView row whose
-// sectionName isn't in this list is silently dropped from both the progress
-// bar and the Timeline below.
-const TRACKED_SECTIONS = [
-  "Cover",
-  "Introduction",
-  "What You Get",
-  "Scope of Work",
-  "Scheduling",
-  "Pricing",
-  "Insurance",
-  "Terms",
-  "Additional Services",
-  "Signature Block",
-  "Quality Methodology",
-  "Colour Coding",
-  "Microfibre Procedures",
-];
+// Any SectionView row whose sectionName isn't in TRACKED_SECTION_NAMES
+// (lib/sections.ts) is silently dropped from both the progress bar and the
+// Timeline below — see that file for the "Signature Block" fallback name
+// hardcoded in app/api/proposals/[uuid]/sign/route.ts too.
+const TRACKED_SECTIONS = TRACKED_SECTION_NAMES;
 
 type StatIcon = ComponentType<{ size?: number; stroke?: number; className?: string }>;
 
@@ -102,7 +88,17 @@ function CardHeading({ icon: Icon, children }: { icon: StatIcon; children: React
   );
 }
 
-function EngagementStat({ icon: Icon, label, value }: { icon: StatIcon; label: string; value: string }) {
+function EngagementStat({
+  icon: Icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: StatIcon;
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="flex items-start gap-3">
       <div className={`${brand.iconChip} bg-neutral-tint`}>
@@ -113,6 +109,7 @@ function EngagementStat({ icon: Icon, label, value }: { icon: StatIcon; label: s
         <p className="mt-1 font-ticket-mono text-sm font-semibold tabular-nums text-content-charcoal">
           {value}
         </p>
+        {hint && <p className="mt-0.5 text-xs text-text-muted">{hint}</p>}
       </div>
     </div>
   );
@@ -421,6 +418,11 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
                     icon={IconClock}
                     label="Total Time on Page"
                     value={formatDurationSeconds(proposalView.totalSeconds)}
+                    hint={
+                      proposalView.openCount > 1
+                        ? "Summed across every open — simultaneous devices/tabs each add their own time"
+                        : undefined
+                    }
                   />
                   <EngagementStat
                     icon={IconEye}

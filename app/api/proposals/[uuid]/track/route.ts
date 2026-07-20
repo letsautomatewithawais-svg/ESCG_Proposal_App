@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { supabaseAdmin } from "@/lib/supabase";
+import { TRACKED_SECTION_NAMES } from "@/lib/sections";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EVENTS = ["open", "heartbeat", "section", "sectionTime"] as const;
@@ -16,6 +17,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isTrackEvent(value: unknown): value is TrackEvent {
   return typeof value === "string" && (EVENTS as readonly string[]).includes(value);
+}
+
+// This endpoint is intentionally unauthenticated (any client viewing a
+// proposal link needs to POST to it) — whitelisting sectionName keeps that
+// from doubling as an open write into SectionView for arbitrary strings.
+function isTrackedSectionName(value: unknown): value is string {
+  return typeof value === "string" && (TRACKED_SECTION_NAMES as readonly string[]).includes(value);
 }
 
 function getClientIp(request: Request): string | null {
@@ -131,7 +139,7 @@ export async function POST(
       }
 
       case "section": {
-        const sectionName = typeof body.sectionName === "string" ? body.sectionName.trim() : "";
+        const sectionName = isTrackedSectionName(body.sectionName) ? body.sectionName.trim() : "";
         if (!sectionName) {
           return NextResponse.json(
             { error: "A valid 'sectionName' field is required." },
@@ -154,7 +162,7 @@ export async function POST(
       }
 
       case "sectionTime": {
-        const sectionName = typeof body.sectionName === "string" ? body.sectionName.trim() : "";
+        const sectionName = isTrackedSectionName(body.sectionName) ? body.sectionName.trim() : "";
         if (!sectionName) {
           return NextResponse.json(
             { error: "A valid 'sectionName' field is required." },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { TRACKED_SECTIONS } from "@/lib/sections";
 
 const HEARTBEAT_INTERVAL_SECONDS = 15;
 const MIN_REPORTABLE_SECONDS = 1;
@@ -18,22 +19,6 @@ const MIN_REPORTABLE_SECONDS = 1;
 // sooner instead of contributing nothing while a taller neighbor is also
 // on screen.
 const DOMINANT_VISIBLE_RATIO = 0.3;
-
-const TRACKED_SECTIONS = [
-  { id: "section-cover", name: "Cover" },
-  { id: "section-introduction", name: "Introduction" },
-  { id: "section-features", name: "What You Get" },
-  { id: "section-scope-of-work", name: "Scope of Work" },
-  { id: "section-scheduling", name: "Scheduling" },
-  { id: "section-pricing", name: "Pricing" },
-  { id: "section-insurance", name: "Insurance" },
-  { id: "section-terms", name: "Terms" },
-  { id: "section-additional-services", name: "Additional Services" },
-  { id: "section-signature-block", name: "Signature Block" },
-  { id: "section-quality-methodology", name: "Quality Methodology" },
-  { id: "section-colour-coding", name: "Colour Coding" },
-  { id: "section-microfibre", name: "Microfibre Procedures" },
-];
 
 type TrackedSection = { el: HTMLElement; name: string };
 
