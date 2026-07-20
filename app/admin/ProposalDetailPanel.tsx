@@ -35,12 +35,25 @@ import {
 // button fires (see Topbar.tsx, which dispatches REFRESH_EVENT).
 const AUTO_REFRESH_INTERVAL_MS = 20_000;
 
+// Must stay in lockstep with app/proposals/[uuid]/ProposalTracker.tsx's
+// TRACKED_SECTIONS names (and the "Signature Block" fallback name hardcoded
+// in app/api/proposals/[uuid]/sign/route.ts) — any SectionView row whose
+// sectionName isn't in this list is silently dropped from both the progress
+// bar and the Timeline below.
 const TRACKED_SECTIONS = [
+  "Cover",
   "Introduction",
+  "What You Get",
   "Scope of Work",
+  "Scheduling",
   "Pricing",
+  "Insurance",
   "Terms",
+  "Additional Services",
   "Signature Block",
+  "Quality Methodology",
+  "Colour Coding",
+  "Microfibre Procedures",
 ];
 
 type StatIcon = ComponentType<{ size?: number; stroke?: number; className?: string }>;

@@ -6,14 +6,33 @@ const HEARTBEAT_INTERVAL_SECONDS = 15;
 const MIN_REPORTABLE_SECONDS = 1;
 // A section must occupy at least this much of its own height within the
 // viewport to count as "being read" — below this, no section is credited.
-const DOMINANT_VISIBLE_RATIO = 0.5;
+// Lowered from 0.5: the document now has 13 tracked sections (was 5), several
+// much shorter and packed onto the same physical page (Scheduling/Pricing/
+// Insurance all sit on one page together) — at 0.5, two or three of them
+// simultaneously fully visible left every non-winner uncredited far more
+// often than with the old 5 large, near-full-page sections, widening the gap
+// between "Total Time on Page" (a page-wide heartbeat, unconditional) and
+// the sum of per-section times (only the single current "dominant" section
+// accrues). This doesn't eliminate that gap — only one section can ever be
+// dominant at a time by design — but it makes shorter sections qualify
+// sooner instead of contributing nothing while a taller neighbor is also
+// on screen.
+const DOMINANT_VISIBLE_RATIO = 0.3;
 
 const TRACKED_SECTIONS = [
+  { id: "section-cover", name: "Cover" },
   { id: "section-introduction", name: "Introduction" },
+  { id: "section-features", name: "What You Get" },
   { id: "section-scope-of-work", name: "Scope of Work" },
+  { id: "section-scheduling", name: "Scheduling" },
   { id: "section-pricing", name: "Pricing" },
+  { id: "section-insurance", name: "Insurance" },
   { id: "section-terms", name: "Terms" },
+  { id: "section-additional-services", name: "Additional Services" },
   { id: "section-signature-block", name: "Signature Block" },
+  { id: "section-quality-methodology", name: "Quality Methodology" },
+  { id: "section-colour-coding", name: "Colour Coding" },
+  { id: "section-microfibre", name: "Microfibre Procedures" },
 ];
 
 type TrackedSection = { el: HTMLElement; name: string };
