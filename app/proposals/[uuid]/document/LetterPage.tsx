@@ -14,7 +14,11 @@ export function LetterPage({ clientName }: { clientName: string }) {
 
       <div className="mt-8">
         <p className="text-sm text-escg-text">Sincerely,</p>
-        <p className="mt-4 font-signature text-4xl text-escg-navy">{FOUNDER.name}</p>
+        <img
+          src="/signature-tory.png"
+          alt={`${FOUNDER.name} signature`}
+          className="mt-4 h-16 w-auto"
+        />
         <p className="mt-1 text-sm font-semibold text-escg-navy">{FOUNDER.name}</p>
         <p className="text-sm text-escg-muted">{FOUNDER.title}</p>
         <p className="mt-2 text-sm text-escg-muted">{FOUNDER.phone}</p>
