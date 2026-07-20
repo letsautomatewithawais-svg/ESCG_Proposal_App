@@ -96,3 +96,13 @@ model ProposalVisit {
 
   @@index([proposalId])
 }
+
+/// Tracks failed admin login attempts per IP so the login route can lock out
+/// brute-force attempts — keyed by IP (not a session/user id) since there's
+/// only one shared admin credential and no per-user accounts.
+model LoginAttempt {
+  ip          String    @id
+  failCount   Int       @default(0)
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+}

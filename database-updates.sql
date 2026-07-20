@@ -194,3 +194,17 @@ ALTER TABLE "Proposal" ADD COLUMN "schedulingDay" TEXT;
 ALTER TABLE "Proposal" ADD COLUMN "schedulingTime" TEXT;
 
 ---------------------------------------------------------
+
+-- 2026-07-21
+-- Rate limiting for the admin login route (QA audit finding: unlimited
+-- password guesses were possible). Keyed by IP, not a user id, since there's
+-- only one shared admin credential and no per-user accounts.
+
+CREATE TABLE "LoginAttempt" (
+  "ip" TEXT PRIMARY KEY,
+  "failCount" INTEGER NOT NULL DEFAULT 0,
+  "lockedUntil" TIMESTAMP(3),
+  "updatedAt" TIMESTAMP(3) NOT NULL
+);
+
+---------------------------------------------------------
