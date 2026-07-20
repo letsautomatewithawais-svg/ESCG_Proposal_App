@@ -17,11 +17,21 @@ function sign(payload: string): string {
   return createHmac("sha256", getSecret()).update(payload).digest("base64url");
 }
 
+// Compares in constant time regardless of input length. Comparing the raw
+// buffers directly would short-circuit on a length mismatch before ever
+// calling timingSafeEqual, making the length-equality check itself an
+// (extremely low-value, but real) timing side-channel — pad both to the same
+// fixed size first so timingSafeEqual always runs, then check length with a
+// trivial equality that isn't gating the expensive comparison.
 function safeEqual(a: string, b: string): boolean {
   const aBuf = Buffer.from(a);
   const bBuf = Buffer.from(b);
-  if (aBuf.length !== bBuf.length) return false;
-  return timingSafeEqual(aBuf, bBuf);
+  const paddedLength = Math.max(aBuf.length, bBuf.length, 256);
+  const aPadded = Buffer.alloc(paddedLength);
+  const bPadded = Buffer.alloc(paddedLength);
+  aBuf.copy(aPadded);
+  bBuf.copy(bPadded);
+  return timingSafeEqual(aPadded, bPadded) && aBuf.length === bBuf.length;
 }
 
 export function matchesAdminPassword(password: string): boolean {
