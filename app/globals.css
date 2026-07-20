@@ -55,18 +55,21 @@
   --color-brand-green: #1f5c3f;
   --color-brand-green-tint: #eaf2ec;
   /* Brand/action identity (buttons, active nav, logo, focus rings, progress).
+     Matches ESCG's actual logo teal (same value as --color-escg-teal below)
+     so the admin tool and the client-facing document read as one brand.
      Deliberately separate from brand-green, which stays reserved for the
      Signed status semantic — recoloring brand-green in place would have
-     turned "Signed" pills purple along with every button. */
-  --color-brand-primary: #7c5cfc;
-  --color-brand-primary-tint: #f1eefe;
+     turned "Signed" pills teal along with every button. */
+  --color-brand-primary: #3f8fa6;
+  --color-brand-primary-tint: #eaf4f7;
   --color-content-charcoal: #1f2421;
   /* Supersedes --color-warmgray — remove warmgray once the admin section finishes migrating off the old palette. */
   --color-text-muted: #8a8e86;
   /* Supersedes --color-paper — remove paper once the admin section finishes migrating off the old palette.
-     Cool lavender undertone (was a warm beige-gray) to match the purple identity. */
-  --color-surface-off: #f7f6fb;
-  --color-neutral-tint: #eeecf5;
+     Cool teal undertone (was a warm beige-gray, then a lavender undertone
+     matching the old purple identity) to match the current teal identity. */
+  --color-surface-off: #f5f8f9;
+  --color-neutral-tint: #e9f1f2;
   /* Opened status pill only. No amber/warning token existed in the original
      ink/paper/sage/warmgray/gold/hairline palette — gold is explicitly
      reserved for pricing emphasis, not free to reuse here — so this is new,
@@ -92,11 +95,11 @@
    */
   /* Hover backgrounds (nav links, rows) — was reusing neutral-tint, which is
      also the icon-chip fill color; one gray was doing two unrelated jobs. */
-  --color-surface-hover: #f2f0f9;
+  --color-surface-hover: #ecf5f6;
   /* Secondary/internal dividers inside a card (e.g. between stacked sections
      in a detail card) — lighter than hairline, which stays reserved for
      actual card/row boundaries so hierarchy is visible, not uniform. */
-  --color-border-subtle: #e6e3f0;
+  --color-border-subtle: #e0eaec;
   /* Emphasized borders/dividers where hairline reads too quiet. */
   --color-border-strong: #c7bfac;
   /* Genuinely disabled text (e.g. a "coming soon" menu item) — was reusing
@@ -109,7 +112,11 @@
  * template (navy/teal, diagonal accent shapes). Scoped to
  * app/proposals/[uuid]/document/* only; deliberately separate from both the
  * warm ink/paper/sage editorial palette above (this replaces it on that one
- * page) and the admin brand-primary/purple identity (untouched).
+ * page) and the admin brand-primary identity above — both now share the
+ * same teal (--color-brand-primary === --color-escg-teal) for one
+ * consistent brand across the whole app, even though these stay separate
+ * @theme blocks (the admin identity also needs its own tints/neutrals that
+ * this document-only block doesn't).
  */
 @theme {
   --color-escg-navy: #17334d; /* headings, diagonal corner shapes */
