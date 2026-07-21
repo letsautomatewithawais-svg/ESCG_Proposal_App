@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import SignaturePad from "signature_pad";
 import { Button } from "../../components/Button";
-import { text } from "@/lib/ui";
+
+// Overrides for the shared Button component's default sage-green admin
+// styling — this component renders inside the client-facing document (see
+// AcceptancePage), which uses the escg-navy/escg-teal identity instead.
+const primaryButtonClass =
+  "rounded-[8px]! bg-escg-teal! font-semibold! text-white! hover:bg-escg-teal/90!";
+const secondaryButtonClass =
+  "rounded-[8px]! border-escg-hairline! text-escg-text! hover:bg-escg-teal-tint!";
 
 type ExistingSignature = { typedName: string; signedAt: string; signatureImage: string } | null;
 
@@ -109,13 +116,13 @@ export default function SignatureSection({
 
   if (signed) {
     return (
-      <div className="rounded-[3px] border border-sage/30 bg-sage/5 p-6 text-center sm:p-8">
-        <p className="text-sm font-medium text-sage">
+      <div className="rounded-[4px] border border-escg-teal/25 bg-escg-teal-tint p-6 text-center sm:p-8">
+        <p className="text-sm font-medium text-escg-teal">
           Thank you, your proposal has been signed.
         </p>
         {signedInfo && (
           <>
-            <p className="mt-1 text-xs text-sage/80">
+            <p className="mt-1 text-xs text-escg-teal/80">
               Signed by {signedInfo.typedName} on{" "}
               {new Intl.DateTimeFormat("en-AU", { dateStyle: "long", timeStyle: "short" }).format(
                 new Date(signedInfo.signedAt),
@@ -138,25 +145,36 @@ export default function SignatureSection({
   if (printMode) {
     return (
       <div>
-        <h2 className={text.sectionLabel}>Accept &amp; Sign</h2>
-        <p className={`mt-3 ${text.muted}`}>Awaiting signature.</p>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-escg-muted">
+          Accept &amp; Sign
+        </h2>
+        <p className="mt-3 text-sm text-escg-muted">Awaiting signature.</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h2 className={text.sectionLabel}>Accept &amp; Sign</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-escg-muted">
+        Accept &amp; Sign
+      </h2>
 
-      <div className="mt-4 overflow-hidden rounded-[3px] border border-hairline bg-white">
+      <div className="mt-4 overflow-hidden rounded-[4px] border border-escg-hairline bg-white">
         <canvas ref={canvasRef} className="h-48 w-full touch-none sm:h-56" />
       </div>
-      <Button type="button" variant="secondary" size="sm" onClick={handleClear} disabled={isSubmitting} className="mt-2">
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={handleClear}
+        disabled={isSubmitting}
+        className={`mt-2 ${secondaryButtonClass}`}
+      >
         Clear
       </Button>
 
       <div className="mt-5">
-        <label htmlFor="typedName" className={text.label}>
+        <label htmlFor="typedName" className="block text-sm font-semibold text-escg-text">
           Type your name
         </label>
         <input
@@ -165,12 +183,12 @@ export default function SignatureSection({
           value={typedName}
           onChange={(e) => setTypedName(e.target.value)}
           disabled={isSubmitting}
-          className="mt-1.5 block w-full rounded-[3px] border border-hairline bg-white px-3 py-2.5 text-sm text-ink focus:border-sage focus:outline-none focus:ring-1 focus:ring-sage disabled:opacity-50"
+          className="mt-1.5 block w-full rounded-[4px] border border-escg-hairline bg-white px-3 py-2.5 text-sm text-escg-text focus:border-escg-teal focus:outline-none focus:ring-1 focus:ring-escg-teal disabled:opacity-50"
         />
       </div>
 
       {error && (
-        <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mt-4 rounded-[8px] border border-red/25 bg-red-tint p-3 text-sm text-red">
           {error}
         </div>
       )}
@@ -180,7 +198,7 @@ export default function SignatureSection({
         variant="primary"
         onClick={handleAcceptAndSign}
         disabled={isSubmitting}
-        className="mt-6 w-full"
+        className={`mt-6 w-full ${primaryButtonClass}`}
       >
         {isSubmitting ? "Submitting…" : "Accept and Sign"}
       </Button>
