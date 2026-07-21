@@ -156,12 +156,9 @@ export default function Sidebar({ displayName }: { displayName: string }) {
             )}
           </div>
           {collapsed ? (
-            <LogoutButton
-              iconOnly
-              className="mt-3 flex w-full items-center justify-center rounded-[8px] p-2 text-text-muted transition-colors hover:bg-surface-hover hover:text-content-charcoal"
-            />
+            <LogoutButton iconOnly className="mt-3 w-full p-2" />
           ) : (
-            <LogoutButton className="mt-3 w-full justify-start text-text-muted! hover:bg-surface-hover! hover:text-content-charcoal!" />
+            <LogoutButton className="mt-3 w-full justify-center" />
           )}
         </div>
       </aside>
