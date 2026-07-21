@@ -464,9 +464,10 @@ export default function NewProposalPage() {
               type="button"
               onClick={closeModal}
               title="Close"
-              className="flex h-6 w-6 items-center justify-center rounded-[6px] text-text-muted transition-colors hover:bg-surface-hover hover:text-content-charcoal"
+              aria-label="Close"
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-content-charcoal ${brand.pressable} ${brand.focusRing}`}
             >
-              <IconX size={15} stroke={1.9} />
+              <IconX size={18} stroke={2} />
             </button>
           </div>
 
