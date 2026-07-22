@@ -46,11 +46,25 @@ export default function SignatureSection({
     const pad = new SignaturePad(canvas, { backgroundColor: "rgb(255, 255, 255)" });
     padRef.current = pad;
 
+    // Mobile browsers fire a `resize` event on scroll (the address bar
+    // collapsing/expanding changes window.innerHeight), which would
+    // otherwise wipe out an in-progress signature on every scroll. Only
+    // actually resize (and clear) the canvas when its own on-screen
+    // dimensions changed.
+    let lastWidth = 0;
+    let lastHeight = 0;
+
     function resizeCanvas() {
       if (!canvas) return;
+      const width = canvas.offsetWidth;
+      const height = canvas.offsetHeight;
+      if (width === lastWidth && height === lastHeight) return;
+      lastWidth = width;
+      lastHeight = height;
+
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      canvas.width = canvas.offsetWidth * ratio;
-      canvas.height = canvas.offsetHeight * ratio;
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
       canvas.getContext("2d")?.scale(ratio, ratio);
       pad.clear();
     }
