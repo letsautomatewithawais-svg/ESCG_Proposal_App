@@ -68,10 +68,14 @@ export default function ProposalsTable({ proposals }: { proposals: TableProposal
     if (status && proposal.status !== status) return false;
 
     if (q) {
-      const needle = q.toLowerCase();
+      // Whitespace-insensitive: most people typing a search don't reproduce
+      // the exact spacing of the stored name (e.g. "TEST2" for "TEST 2"), so
+      // strip spaces from both sides before comparing.
+      const needle = q.toLowerCase().replace(/^#/, "").replace(/\s+/g, "");
       if (
-        !proposal.clientName.toLowerCase().includes(needle) &&
-        !proposal.companyName.toLowerCase().includes(needle)
+        !proposal.clientName.toLowerCase().replace(/\s+/g, "").includes(needle) &&
+        !proposal.companyName.toLowerCase().replace(/\s+/g, "").includes(needle) &&
+        !proposal.id.toLowerCase().includes(needle)
       ) {
         return false;
       }
