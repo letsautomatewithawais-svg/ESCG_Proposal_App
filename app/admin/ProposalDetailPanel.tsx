@@ -70,6 +70,7 @@ type DetailResponse = {
     monthlyCostExclGst: number;
     totalMonthlyInclGst: number;
     acquisitionMethod: string;
+    createdAt: string;
   };
   signature: { typedName: string; signedAt: string; signatureImage: string } | null;
   proposalView: { firstOpenAt: string; totalSeconds: number; openCount: number } | null;
@@ -288,6 +289,7 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
   const { proposal, signature, proposalView, sectionViews, visits } = data;
 
   const walkThroughDateDisplay = formatDateAU(new Date(proposal.walkThroughDate), timezone);
+  const createdAtDisplay = formatDateTimeAU(new Date(proposal.createdAt), timezone);
   const sectionViewedAt = new Map(
     sectionViews.map((view) => [view.sectionName, new Date(view.firstViewedAt)]),
   );
@@ -522,6 +524,10 @@ export default function ProposalDetailPanel({ proposalId }: { proposalId: string
           <div className={`${brand.card} p-4 sm:p-6`}>
             <CardHeading icon={IconFileDescription}>Proposal Details</CardHeading>
             <dl className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+              <div>
+                <dt className={brand.label}>Date Created</dt>
+                <dd className="mt-1 font-body text-sm text-content-charcoal">{createdAtDisplay}</dd>
+              </div>
               <div>
                 <dt className={brand.label}>Walk-through Date</dt>
                 <dd className="mt-1 font-body text-sm text-content-charcoal">
