@@ -62,7 +62,7 @@ export function DocumentPage({
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between px-6 pt-6 sm:px-[18mm] sm:pt-[12mm]">
             <StripeAccent />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-icon.png" alt="" className="h-14 w-14 shrink-0 sm:h-16 sm:w-16" />
+            <img src="/logo-icon.png" alt="" className="h-20 w-20 shrink-0 object-contain sm:h-24 sm:w-24" />
           </div>
         </>
       )}

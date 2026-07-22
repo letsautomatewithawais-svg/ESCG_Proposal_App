@@ -66,6 +66,10 @@ export function SchedulingPricingInsurancePage({
             </tbody>
           </table>
         </div>
+        <p className="mt-3 text-xs text-escg-muted">
+          Payment terms for this quotation are based upon a total per annum price divided into 12
+          equal monthly
+        </p>
       </div>
 
       <div id="section-insurance">

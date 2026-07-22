@@ -39,7 +39,11 @@ export function CoverPage({ companyName, companyAddress, dateIssuedDisplay }: Co
             </p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-icon.png" alt="Eastern Suburbs Cleaning Group" className="h-16 w-16 shrink-0 sm:h-20 sm:w-20" />
+          <img
+            src="/logo-icon.png"
+            alt="Eastern Suburbs Cleaning Group"
+            className="h-20 w-20 shrink-0 object-contain sm:h-24 sm:w-24"
+          />
         </div>
 
         <div className="mt-6 border-t border-escg-hairline sm:mt-8">
